@@ -71,3 +71,8 @@ function quickselect(X,k, left = 1, right = length(X))
     res = quickselect!(Xc,k,left,right)
     return res
 end
+
+function lower_median(X)
+    index = div(length(X),2) + 1
+    return quickselect(X,index)
+end
