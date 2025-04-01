@@ -66,9 +66,10 @@ function quickselect!(X,k, dims, left = 1, right = nothing)
         dim = findfirst(==(:),dims)
         right = length(axes(X,dim))
     end
+    subvec = @views X[dims...]
     while true
         if left == right
-            return X[left]
+            return subvec[left]
         end
         pivotIndex = rand(left:right)
         pivotIndex = hoare_partition!(X,left,right,pivotIndex,dims)
