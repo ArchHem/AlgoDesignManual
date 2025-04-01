@@ -1,14 +1,18 @@
 using Random
 
-@inline function swap!(v, i::Int, j::Int)
-    #easier than pointer magic.
-    v[i], v[j] = v[j], v[i]
+@inline function swap!(X,i::Int,j::Int, dim::Int)
+    tmp = copy(selectdim(X,dim,j))
+    selectdim(X,dim,j) .= selectdim(X,dim,i)
+    selectdim(X,dim,i) .= tmp
     return nothing
 end
 
-function hoare_partition!(X,left,right,pivotIndex)
-    pivot = X[pivotIndex]
-    right = right
+function hoare_partition!(X,left,right,pivotIndex,dims)
+    #dims should have 1x colon
+    #works up to matrices: in higher dimensions there is no 1:1 mapping
+    dim = findfirst(==(:),dims)
+    subvec = @views X[dims...]
+    pivot = subvec[pivotIndex]
     while true
         while X[left] < pivot
             left = left + 1
@@ -23,7 +27,7 @@ function hoare_partition!(X,left,right,pivotIndex)
         end
         #dont swap equals?
 
-        swap!(X,left,right)
+        swap!(X,left,right,dim)
 
         left = left + 1
         right = right - 1
@@ -31,30 +35,42 @@ function hoare_partition!(X,left,right,pivotIndex)
 end
 
 #use randomized method
-function quicksort!(X, left = 1, right = length(X))
-    #end condition
+function quicksort!(X, dims, left = 1, right = nothing)
+    if isnothing(right)
+        dim = findfirst(==(:),dims)
+        right = length(axes(X,dim))
+    end
     if left >= right || left < 1
         return X
     end
     pivotIndex = rand(left:right)  
-    partitionIndex = hoare_partition!(X, left, right, pivotIndex)
-    quicksort!(X, left, partitionIndex)   
-    quicksort!(X, partitionIndex + 1, right)  
+    partitionIndex = hoare_partition!(X, left, right, pivotIndex, dims)
+    println(partitionIndex," ",left, " ", right)
+    quicksort!(X, dims, left, partitionIndex)   
+    quicksort!(X, dims, partitionIndex + 1, right)  
 end
 
-function quicksort(X, left = 1, right = length(X))
+function quicksort(X, dims, left = 1, right = nothing)
+    if isnothing(right)
+        dim = findfirst(==(:),dims)
+        right = length(axes(X,dim))
+    end
     Xc = copy(X)
-    quicksort!(Xc,left, right)
+    quicksort!(Xc, dims, left, right,)
     return Xc
 end
 
-function quickselect!(X,k, left = 1, right = length(X))
+function quickselect!(X,k, dims, left = 1, right = nothing)
+    if isnothing(right)
+        dim = findfirst(==(:),dims)
+        right = length(axes(X,dim))
+    end
     while true
         if left == right
             return X[left]
         end
         pivotIndex = rand(left:right)
-        pivotIndex = hoare_partition!(X,left,right,pivotIndex)
+        pivotIndex = hoare_partition!(X,left,right,pivotIndex,dims)
         #shift to left
         #pivotindex is the index around which the data is now partitioned
         #i.e. beyond the new pivot there are only >= elements compares to the old one, and front, there are only ones that are <= compared 
@@ -66,13 +82,17 @@ function quickselect!(X,k, left = 1, right = length(X))
     end
 end
 
-function quickselect(X,k, left = 1, right = length(X))
+function quickselect(X,k, dims, left = 1, right = nothing)
+    if isnothing(right)
+        dim = findfirst(==(:),dims)
+        right = length(axes(X,dim))
+    end
     Xc = copy(X)
-    res = quickselect!(Xc,k,left,right)
+    res = quickselect!(Xc,k,dims, left,right)
     return res
 end
 
-function lower_median(X)
+function lower_median(X::AbstractVector)
     index = div(length(X),2) + 1
-    return quickselect(X,index)
+    return quickselect(X,index,[:])
 end
