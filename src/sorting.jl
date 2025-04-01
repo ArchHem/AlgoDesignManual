@@ -14,11 +14,11 @@ function hoare_partition!(X,left,right,pivotIndex,dims)
     subvec = @views X[dims...]
     pivot = subvec[pivotIndex]
     while true
-        while X[left] < pivot
+        while subvec[left] < pivot
             left = left + 1
         end
         
-        while X[right] > pivot
+        while subvec[right] > pivot
             right = right - 1
         end
 
@@ -43,9 +43,10 @@ function quicksort!(X, dims, left = 1, right = nothing)
     if left >= right || left < 1
         return X
     end
-    pivotIndex = rand(left:right)  
+    pivotIndex = rand(left:right)
+    
     partitionIndex = hoare_partition!(X, left, right, pivotIndex, dims)
-    println(partitionIndex," ",left, " ", right)
+    
     quicksort!(X, dims, left, partitionIndex)   
     quicksort!(X, dims, partitionIndex + 1, right)  
 end
