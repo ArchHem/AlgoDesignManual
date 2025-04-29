@@ -39,7 +39,7 @@ end
 using BenchmarkTools, Plots
 
 
-sizes = [10, 50, 100, 200, 400, 800, 5000, 10000, 50000, 100000, 200000]
+sizes = [10, 50, 100, 200, 400, 800, 5000, 10000, 20000]
 dimensions = 4
 
 function plot_greedy_views_benchmark(sizes::Vector{Int}, D::Int; generator=randn, dtype=Float64)
@@ -61,8 +61,6 @@ function plot_greedy_views_benchmark(sizes::Vector{Int}, D::Int; generator=randn
         title = "TSP Greedy Heuristic (Views Only)",
         marker = :circle,
         lw = 2,
-        xscale = :log10,
-        yscale = :log10,
         legend = false,
         grid = true
     )
