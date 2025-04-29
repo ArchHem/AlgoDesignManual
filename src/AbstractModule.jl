@@ -2,5 +2,5 @@ module MyImpl
 include("./sorting.jl")
 include("./KDTrees.jl")
 
-export quicksort!, quickselect, quicksort, quickselect!
+export quicksort!, quickselect, quicksort, quickselect!, KDTree
 end

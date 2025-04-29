@@ -7,19 +7,26 @@ end
 
 size(x::KDTree{T}) where T = size(x.storage)
 
-function KDTree_(x::Matrix{T}, level::Int64, dim_split, left_children, right_children) where T
-    Num_elements, dimensions = size(x)
-    if N == 1
-        return 1
-    end
-    currdim = mod(level, dimensions)
-    currview = @views x[:, currdim]
-    currmed = lower_median(currview)
+function KDTree!_(x::Matrix{T}, level::Int64 = 0, dim_split, left_children, right_children) where T
+    N, D = size(x)
 
+    if N <= 1 #recursion stop
+        return 
+    end
+
+    curdim = mod(level, D) + 1 #account for 1 based indexing
+
+    #execute quickselection
+
+    midindex = div(N, 2) + 1 
+    quickselect!(x, midindex, [:, curdim]) #continious along comparassion elements
+    dim_split[midindex] = curdim
 
     
 
-    #split into those that are 
+
+
+
 
 
 

@@ -57,9 +57,12 @@ function quicksort(X, dims, left = 1, right = nothing)
         right = length(axes(X,dim))
     end
     Xc = copy(X)
-    quicksort!(Xc, dims, left, right,)
+    quicksort!(Xc, dims, left, right)
     return Xc
 end
+
+quicksort(X::AbstractVector) = quicksort(X,[:],firstindex(X),lastindex(X))
+quicksort!(X::AbstractVector) = quicksort(X,[:],firstindex(X),lastindex(X))
 
 function quickselect!(X,k, dims, left = 1, right = nothing)
     if isnothing(right)
