@@ -1,44 +1,42 @@
-struct KDTree{T}
+struct KDTreeMatrix{T}
     storage::Matrix{T}
-    split_dims::Vector{Int}
-    left_child::Vector{Int}
-    right_child::Vector{Int}
+    numelems::Int64
+    sentinel::BitVector
 end
 
-size(x::KDTree{T}) where T = size(x.storage)
+function KDTree!_(x::Matrix, heap_storage::Matrix, sentinel, depth = 0, index = 1, left = 1, right = size(x,2))
 
-function KDTree!_(x::Matrix{T}, level::Int64 = 0, dim_split, left_children, right_children) where T
-    N, D = size(x)
-
-    if N <= 1 #recursion stop
-        return 
+    D, N = size(x)
+    if left == right
+        heap_storage[:, index] .= @views x[:, left]
+        sentinel[index] = true
+        return
     end
+    currdim = mod(depth, D) + 1
 
-    curdim = mod(level, D) + 1 #account for 1 based indexing
+    median_index = div(left + right,2)
+    quickselect!(x, median_index, [currdim,:], left, right)
+    sentinel[index] = true
+    heap_storage[:, index] .= @views x[:, median_index]
 
-    #execute quickselection
-
-    midindex = div(N, 2) + 1 
-    quickselect!(x, midindex, [:, curdim]) #continious along comparassion elements
-    dim_split[midindex] = curdim
-
+    KDTree!_(x, heap_storage, sentinel, depth + 1, 2*index, left, median_index)
+    KDTree!_(x, heap_storage, sentinel, depth + 1, 2*index+1, median_index+1, right)
     
-
-
-
-
-
-
 
 end
 
+function KDTreeMatrix(x::Matrix{T}) where T
+    D, N = size(x)
+    buffer = 1
+    while buffer < N
+        buffer *= 2
+    end
+    buffer *= 2
+    storage = Matrix{T}(undef,D, buffer)
+    sentinel = falses(buffer)
 
-function KDTree(x::Matrix{T}) where T
-    #constructor
-    Num_elements, dimensions = size(x)
-    storage_length = 2^(ceil(Int64,log2(Num_elements)))
-    data = fill(NaN, storage_length, dimensions)
+    KDTree!_(x,storage,sentinel)
+    return KDTreeMatrix{T}(storage,N,sentinel)
 
 
-    
 end
