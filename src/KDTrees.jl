@@ -10,7 +10,6 @@ A semi-static, heap-array-like KD-tree storing D-dimensional points in a flat `M
 """
 struct KDTreeMatrix{T}
     storage::Matrix{T}
-    numelems::Int64
     sentinel::BitVector
 end
 
@@ -68,7 +67,7 @@ function KDTreeMatrix(x::Matrix{T}) where T
     storage = Matrix{T}(undef,D, buffer)
     sentinel = falses(buffer)
     KDTree!_(x,storage,sentinel)
-    return KDTreeMatrix{T}(storage,N,sentinel)
+    return KDTreeMatrix{T}(storage,sentinel)
 
 end
 
@@ -126,7 +125,8 @@ Lzaily deletes an elemement from a KDTreeMatrix
 - 'index': Index of the element in the underlying heap-like storage to delete
 """
 function lazydelete!(x::KDTreeMatrix, index::Int)
-    tree.sentinel[index] = false
+    x.sentinel[index] = false
+
 end
 
 """
@@ -137,5 +137,8 @@ end
 
 function rebuild(x::KDTreeMatrix)
     valid_storage = @views x.storage[:, x.sentinel]
-    return KDTreeMatrix(valid_storage)
+    newtree = KDTreeMatrix(valid_storage)
+    x.storage .= newtree.storage
+    x.sentinel .= newtree.sentinel
+    return x
 end
