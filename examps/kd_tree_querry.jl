@@ -1,4 +1,4 @@
-using BenchmarkTools, Plots
+using BenchmarkTools, Plots, Statistics
 include("../src/AbstractModule.jl")
 using .Basics
 
@@ -10,7 +10,7 @@ end
 function nearest_brute(data::Matrix{T}, query::AbstractVector{T}) where T
     best_dist = typemax(T)
     best_index = -1
-    for i in 1:size(data, 2)
+    @inbounds for i in 1:size(data, 2)
         pt = @views data[:, i]
         dist = sum(@. (pt - query)^2)
         if dist < best_dist
@@ -31,13 +31,13 @@ function benchmark_knn_search(maxN::Int=10_000; step=500, D=4)
         tree = KDTreeMatrix(points)
         query = rand(D)
 
-        # Benchmark KDTree search
-        kd_time = @belapsed nn_search($tree, $query)
-        push!(kdtimes, kd_time)
+        
+        kd_bench = @benchmark nn_search($tree, $query)
+        push!(kdtimes, mean(kd_bench).time / 1e9)
 
-        # Benchmark brute-force search
-        brute_time = @belapsed nearest_brute($points, $query)
-        push!(brutetimes, brute_time)
+        
+        brute_bench = @benchmark nearest_brute($points, $query)
+        push!(brutetimes, mean(brute_bench).time / 1e9)
     end
 
     u = plot(ns, kdtimes, label="KDTree Search", lw=2, xlabel="Number of Points (N)", ylabel="Time (s)", legend=:topleft)
