@@ -121,6 +121,7 @@ end
 
 """
     lazydelete!(x::KDTreeMatrix,index)
+Lzaily deletes an elemement from a KDTreeMatrix
 - 'x': Tree to lazily delete element from
 - 'index': Index of the element in the underlying heap-like storage to delete
 """
@@ -128,5 +129,13 @@ function lazydelete!(x::KDTreeMatrix, index::Int)
     tree.sentinel[index] = false
 end
 
+"""
+    rebuild(x::KDTreeMatrix)
+    Rebuild a KDTree, discarding all invalideted nodes
+-'x': Current tree instance to rebuild from
+"""
+
 function rebuild(x::KDTreeMatrix)
+    valid_storage = @views x.storage[:, x.sentinel]
+    return KDTreeMatrix(valid_storage)
 end
