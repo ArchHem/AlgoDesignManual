@@ -1,4 +1,4 @@
-module MyImpl
+module Basics
 include("./sorting.jl")
 include("./KDTrees.jl")
 
