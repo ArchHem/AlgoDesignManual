@@ -81,7 +81,7 @@ Returns the index and the point closest to the query point.
 
 This is a recursive search that respects the heap layout (2i and 2i+1 children).
 """
-function knn_search(tree::KDTreeMatrix{T}, query::Vector{T}) where T
+function nn_search(tree::KDTreeMatrix{T}, query::Vector{T}) where T
 
     function recursor(query,index, depth, best_dist = typemax(T), best_index = -1)
         if index > length(tree.sentinel) || !tree.sentinel[index]
