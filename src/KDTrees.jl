@@ -84,15 +84,19 @@ This is a recursive search that respects the heap layout (2i and 2i+1 children).
 function nn_search(tree::KDTreeMatrix{T}, query::Vector{T}) where T
 
     function recursor(query,index, depth, best_dist = typemax(T), best_index = -1)
-        if index > length(tree.sentinel) || !tree.sentinel[index]
+        if index > length(tree.sentinel)
             return best_dist, best_index
         end
-        point = @views tree.storage[:, index]
-        actdist = sum(@. (point-query)^2 )
 
-        if actdist < best_dist
-            best_dist = actdist
-            best_index = index
+        if tree.sentinel[index]
+            point = @views tree.storage[:, index]
+            actdist = sum(@. (point - query)^2)
+            if actdist < best_dist
+                best_dist = actdist
+                best_index = index
+            end
+        else
+            point = @views tree.storage[:, index]
         end
 
         dim = mod(depth, size(tree.storage, 1)) + 1
@@ -113,4 +117,16 @@ function nn_search(tree::KDTreeMatrix{T}, query::Vector{T}) where T
     _, index = recursor(query,1,0,typemax(T),-1)
 
     return index, tree.storage[:, index]
+end
+
+"""
+    lazydelete!(x::KDTreeMatrix,index)
+- 'x': Tree to lazily delete element from
+- 'index': Index of the element in the underlying heap-like storage to delete
+"""
+function lazydelete!(x::KDTreeMatrix, index::Int)
+    tree.sentinel[index] = false
+end
+
+function rebuild(x::KDTreeMatrix)
 end
