@@ -70,5 +70,47 @@ function KDTreeMatrix(x::Matrix{T}) where T
     KDTree!_(x,storage,sentinel)
     return KDTreeMatrix{T}(storage,N,sentinel)
 
+end
 
+"""
+    knn_search(tree::KDTreeMatrix{T}, query::AbstractVector{T}) -> (best_index, best_distance)
+
+Performs a nearest-neighbor search in the KDTree for the query point.
+
+Returns the index and the point closest to the query point.
+
+This is a recursive search that respects the heap layout (2i and 2i+1 children).
+"""
+function knn_search(tree::KDTreeMatrix{T}, query::Vector{T}) where T
+
+    function recursor(query,index, depth, best_dist = typemax(T), best_index = -1)
+        if index > length(tree.sentinel) || !tree.sentinel[index]
+            return best_dist, best_index
+        end
+        point = @views tree.storage[:, index]
+        actdist = sum(@. (point-query)^2 )
+
+        if actdist < best_dist
+            best_dist = actdist
+            best_index = index
+        end
+
+        dim = mod(depth, size(tree.storage, 1)) + 1
+        
+        diff = query[dim] - point[dim]
+        near = diff < 0 ? 2 * index : 2 * index + 1
+        far = diff < 0 ? 2 * index + 1 : 2 * index
+
+        best_dist, best_index = recursor(query, near, depth + 1, best_dist, best_index)
+        if diff^2 < best_dist
+            best_dist, best_index = recursor(query, far, depth + 1, best_dist, best_index)
+        end
+
+        return best_dist, best_index
+
+    end
+
+    _, index = recursor(query,1,0,typemax(T),-1)
+
+    return index, tree.storage[:, index]
 end
