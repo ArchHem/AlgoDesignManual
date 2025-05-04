@@ -24,6 +24,7 @@ function benchmark_knn_search(maxN::Int=10_000; step=500, D=4)
     ns = step:step:maxN
     kdtimes = Float64[]
     brutetimes = Float64[]
+    validity = Bool[]
 
     for N in ns
         println("Benchmarking n = $N points")
@@ -34,11 +35,14 @@ function benchmark_knn_search(maxN::Int=10_000; step=500, D=4)
         
         kd_bench = @benchmark nn_search($tree, $query)
         push!(kdtimes, mean(kd_bench).time / 1e9)
-
-        
         brute_bench = @benchmark nearest_brute($points, $query)
         push!(brutetimes, mean(brute_bench).time / 1e9)
+        _, pkd = nn_search(tree, query)
+        _, pbf = nearest_brute(points, query)
+
+        push!(validity, pkd == pbf)
     end
+    println(sum(validity)/length(ns))
 
     u = plot(ns, kdtimes, label="KDTree Search", lw=2, xlabel="Number of Points (N)", ylabel="Time (s)", legend=:topleft)
     plot!(u, ns, brutetimes, label="Brute-Force Search", lw=2, linestyle=:dash)
