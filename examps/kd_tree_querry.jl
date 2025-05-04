@@ -1,53 +1,23 @@
-using BenchmarkTools, Plots, Statistics
+using BenchmarkTools, Plots, Random
 include("../src/AbstractModule.jl")
 using .Basics
 
-function nearest_kdtree(tree::KDTreeMatrix{T}, query::AbstractVector{T}) where T
-    best_index, point = nn_search(tree, query)
-    return best_index, point
-end
-
-function nearest_brute(data::Matrix{T}, query::AbstractVector{T}) where T
-    best_dist = typemax(T)
-    best_index = -1
-    @inbounds for i in 1:size(data, 2)
-        pt = @views data[:, i]
-        dist = sum(@. (pt - query)^2)
-        if dist < best_dist
-            best_index = i
+function bf_nn(data::Matrix{T}, point::AbstractVector{T}) where T
+    bestindex, bestdist = -1, typemax(T)
+    @inbounds for i in axes(data, 2)
+        candidate = @view data[:, i]
+        dist = sum(@. (candidate - point)^2)
+        if dist < bestdist
+            bestdist = dist
+            bestindex = i
         end
     end
-    return best_index, @views data[:, best_index]
+    return bestindex, @views data[:, bestindex]
 end
 
-function benchmark_knn_search(maxN::Int=10_000; step=500, D=4)
-    ns = step:step:maxN
-    kdtimes = Float64[]
-    brutetimes = Float64[]
-    validity = Bool[]
+u = rand(4,10000)
 
-    for N in ns
-        println("Benchmarking n = $N points")
-        points = rand(D, N)
-        tree = KDTreeMatrix(points)
-        query = rand(D)
-
-        
-        kd_bench = @benchmark nn_search($tree, $query)
-        push!(kdtimes, mean(kd_bench).time / 1e9)
-        brute_bench = @benchmark nearest_brute($points, $query)
-        push!(brutetimes, mean(brute_bench).time / 1e9)
-        _, pkd = nn_search(tree, query)
-        _, pbf = nearest_brute(points, query)
-
-        push!(validity, pkd == pbf)
-    end
-    println(sum(validity)/length(ns))
-
-    u = plot(ns, kdtimes, label="KDTree Search", lw=2, xlabel="Number of Points (N)", ylabel="Time (s)", legend=:topleft)
-    plot!(u, ns, brutetimes, label="Brute-Force Search", lw=2, linestyle=:dash)
-    return u
-end
-
-examp = benchmark_knn_search()
-show(examp)
+tree = KDTreeMatrix(u)
+point = rand(Xoshiro(1),4)
+index, closest = nn_search(tree,point)
+indexb, closestb = bf_nn(u,point)
