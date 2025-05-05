@@ -5,7 +5,6 @@ A semi-static, heap-array-like KD-tree storing D-dimensional points in a flat `M
 
 # Fields
 - `storage::Matrix{T}`: The D×M matrix storing points in a binary heap layout.
-- `numelems::Int64`: The number of points stored (equal to number of columns in input).
 - `sentinel::BitVector`: Boolean mask marking which heap slots are used (true = occupied).
 """
 struct KDTreeMatrix{T}
