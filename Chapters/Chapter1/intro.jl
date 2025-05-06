@@ -8,7 +8,7 @@ using BenchmarkTools, Plots
 include("../../src/AbstractModule.jl")
 using .Basics
 
-function TSP_greed_naive_views(x::AbstractMatrix{T}, i = rand(1:size(x,2))) where T
+function TSP_greed_naive_views(x::AbstractMatrix{T}, start = zeros(T,size(x,1))) where T
     #precompute distance matrix 
     #could do with an abstraction
     #each column of data is a single entry, i.e. we have dimension (D) number of rows
@@ -16,13 +16,10 @@ function TSP_greed_naive_views(x::AbstractMatrix{T}, i = rand(1:size(x,2))) wher
     #use squared eucleadin distance
     totdist = zero(T)
     D, N = size(x)
-    
+    currelem = start
     toq = x
     
     while size(toq)[2] > 1
-        currelem = @view toq[:,i]
-        
-        toq = @views toq[:,1:end .!= i]
         currmin = typemax(T)
         @inbounds for j in axes(toq,2)
             pot = @views currelem - toq[:,j]
@@ -33,53 +30,72 @@ function TSP_greed_naive_views(x::AbstractMatrix{T}, i = rand(1:size(x,2))) wher
             end
         end
         totdist += sqrt(currmin)
+        currelem = @view toq[:,i]
+        toq = @views toq[:,1:end .!= i]
     end
 
 
     return totdist
 end
 
-function greedy_TSP_kd(x::AbstractMatrix{T}, i = rand(1:size(x,2)), rebuild_ratio = 0.7)
+#I am pretty sure its the choice of i causing stalls...
+function greedy_TSP_kd(x::AbstractMatrix{T}, start = zeros(T,size(x,1)), rebuild_ratio = 0.7) where T
     tree = KDTreeMatrix(copy(x))
     numelems = size(x,2)
     currelems = numelems
     totdist = zero(T)
-    while currelems > 0
-        currpoint = @views tree.storage[:,i]
-        #revise
+    currpoint = start
+    while currelems > 1
+        #if we hit critical ratio, rebuild
         if currelems/numelems < rebuild_ratio
-            numelems = sum(tree.sentinel)
             tree = rebuild(tree)
-            #recalculate position in new tree
-            i, point = nn_search(tree,currpoint)
-            #delete the old (current) point
-            lazydelete!(tree, i)
-            currelems -= 1
-            i, point = nn_search(tree,currpoint)
-            displ = point - currpoint
-            totdist += sqrt(dot(displ,displ))
-            currelems -= 1
-        else
-            lazydelete!(tree,i)
-            i, point = nn_search(tree,currpoint)
-            displ = point - currpoint
-            totdist += sqrt(dot(displ,displ))
-            currelems -= 1
+            numelems = sum(tree.sentinel)
         end
+        i, point = nn_search(tree,currpoint)
+        lazydelete!(tree, i)
+        displ = point - currpoint
+        totdist += sqrt(dot(displ,displ))
+        currelems -= 1
         currpoint = point
     end
 
     return totdist
 end
 
-sizes = [1000, 2500, 5000, 10000, 15000, 20000]
 dimensions = 4
 
-function TSP_greedy_comp(sizes = sizes)
+function TSP_greedy_comp(sizes = [100, 200, 400, 800, 1600], dimensions = 4)
+    naive_times = Float64[]
+    kd_times = Float64[]
 
+    for N in sizes
+        println("Running for N = $N")
+        x = rand(Float64, dimensions, N)
+
+        # Benchmark both methods
+        naive_time = @belapsed TSP_greed_naive_views($x)
+        kd_time = @belapsed greedy_TSP_kd($x)
+
+        push!(naive_times, naive_time)
+        push!(kd_times, kd_time)
+    end
+
+    # Plotting
+    inst = plot(
+        sizes,
+        naive_times,
+        label = "Naive Linear Search",
+        lw = 2,
+        marker = :circle,
+        yscale = :log10,
+        xlabel = "Number of Points (N)",
+        ylabel = "Runtime (seconds, log scale)",
+        title = "Greedy TSP: Naive vs KD-Tree (rebuild_ratio = 0.7)"
+    )
+    plot!(sizes, kd_times, label = "KD-Tree", lw = 2, marker = :diamond)
+
+    return inst
 end
 
-res1 = plot_greedy_views_benchmark(sizes, 4)
-
-
-plot(res1, res2, layout = (1,2))
+sizes = [2^i for i in 4:15]
+res = TSP_greedy_comp(sizes)

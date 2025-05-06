@@ -10,6 +10,7 @@ A semi-static, heap-array-like KD-tree storing D-dimensional points in a flat `M
 struct KDTreeMatrix{T}
     storage::Matrix{T}
     sentinel::BitVector
+    unused::BitVector
 end
 
 """
@@ -26,7 +27,7 @@ Recursive internal function to build a heap-like KDTree in-place.
 
 This partitions the space and places medians in heap order.
 """
-function KDTree!_(x::Matrix, heap_storage::Matrix, sentinel, depth = 0, index = 1, left = 1, right = size(x,2))
+function KDTree!_(x::Matrix, heap_storage::Matrix, sentinel, unused, depth = 0, index = 1, left = 1, right = size(x,2))
 
     D, N = size(x)
     if left == right
@@ -39,10 +40,11 @@ function KDTree!_(x::Matrix, heap_storage::Matrix, sentinel, depth = 0, index = 
     median_index = div(left + right,2)
     quickselect!(x, median_index, [currdim,:], left, right)
     sentinel[index] = true
+    unused[index] = false
     heap_storage[:, index] .= @views x[:, median_index]
 
-    KDTree!_(x, heap_storage, sentinel, depth + 1, 2*index, left, median_index)
-    KDTree!_(x, heap_storage, sentinel, depth + 1, 2*index+1, median_index+1, right)
+    KDTree!_(x, heap_storage, sentinel, unused, depth + 1, 2*index, left, median_index)
+    KDTree!_(x, heap_storage, sentinel, unused, depth + 1, 2*index+1, median_index+1, right)
     
 
 end
@@ -65,8 +67,9 @@ function KDTreeMatrix(x::Matrix{T}) where T
     buffer *= 2
     storage = Matrix{T}(undef,D, buffer)
     sentinel = falses(buffer)
-    KDTree!_(x,storage,sentinel)
-    return KDTreeMatrix{T}(storage,sentinel)
+    unused = falses(buffer)
+    KDTree!_(x,storage,sentinel, unused)
+    return KDTreeMatrix{T}(storage,sentinel,unused)
 
 end
 
@@ -82,7 +85,7 @@ This is a recursive search that respects the heap layout (2i and 2i+1 children).
 function nn_search(tree::KDTreeMatrix{T}, query::Vector{T}) where T
 
     function recursor(query,index, depth, best_dist = typemax(T), best_index = -1)
-        if index > length(tree.sentinel)
+        if tree.unused[index] || index > length(tree.sentinel)
             return best_dist, best_index
         end
 
@@ -125,7 +128,11 @@ Lzaily deletes an elemement from a KDTreeMatrix
 """
 function lazydelete!(x::KDTreeMatrix, index::Int)
     x.sentinel[index] = false
-
+    L = length(x.sentinel)
+    if 2*index > L || (x.unused[2*index] && x.unused[2*index + 1])
+        x.unused[index] = true
+    end
+    return 
 end
 
 """
@@ -135,9 +142,8 @@ end
 """
 
 function rebuild(x::KDTreeMatrix)
-    valid_storage = @views x.storage[:, x.sentinel]
+    #maybe use views here?
+    valid_storage = x.storage[:, x.sentinel]
     newtree = KDTreeMatrix(valid_storage)
-    x.storage .= newtree.storage
-    x.sentinel .= newtree.sentinel
-    return x
+    return newtree
 end
