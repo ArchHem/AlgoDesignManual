@@ -18,7 +18,7 @@ function TSP_greed_naive_views(x::AbstractMatrix{T}, start = zeros(T,size(x,1)))
     D, N = size(x)
     currelem = start
     toq = x
-    
+    i = 0
     while size(toq)[2] > 1
         currmin = typemax(T)
         @inbounds for j in axes(toq,2)
@@ -39,7 +39,7 @@ function TSP_greed_naive_views(x::AbstractMatrix{T}, start = zeros(T,size(x,1)))
 end
 
 #I am pretty sure its the choice of i causing stalls...
-function greedy_TSP_kd(x::AbstractMatrix{T}, start = zeros(T,size(x,1)), rebuild_ratio = 0.7) where T
+function greedy_TSP_kd(x::AbstractMatrix{T}, start = zeros(T,size(x,1)), rebuild_ratio = 0.7, stop_size = 10) where T
     tree = KDTreeMatrix(copy(x))
     numelems = size(x,2)
     currelems = numelems
@@ -47,12 +47,14 @@ function greedy_TSP_kd(x::AbstractMatrix{T}, start = zeros(T,size(x,1)), rebuild
     currpoint = start
     while currelems > 1
         #if we hit critical ratio, rebuild
-        if currelems/numelems < rebuild_ratio
+        
+        if currelems/numelems < rebuild_ratio && numelems > stop_size
             tree = rebuild(tree)
             numelems = sum(tree.sentinel)
         end
+        
         i, point = nn_search(tree,currpoint)
-        lazydelete!(tree, i)
+        lazydelete!(tree,i)
         displ = point - currpoint
         totdist += sqrt(dot(displ,displ))
         currelems -= 1
@@ -73,8 +75,8 @@ function TSP_greedy_comp(sizes = [100, 200, 400, 800, 1600], dimensions = 4)
         x = rand(Float64, dimensions, N)
 
         # Benchmark both methods
-        naive_time = @belapsed TSP_greed_naive_views($x)
-        kd_time = @belapsed greedy_TSP_kd($x)
+        naive_time = @elapsed TSP_greed_naive_views(x)
+        kd_time = @elapsed greedy_TSP_kd(x)
 
         push!(naive_times, naive_time)
         push!(kd_times, kd_time)
@@ -97,5 +99,5 @@ function TSP_greedy_comp(sizes = [100, 200, 400, 800, 1600], dimensions = 4)
     return inst
 end
 
-sizes = [2^i for i in 4:15]
+sizes = [2^i for i in 4:16]
 res = TSP_greedy_comp(sizes)

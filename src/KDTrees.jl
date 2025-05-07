@@ -6,6 +6,7 @@ A semi-static, heap-array-like KD-tree storing D-dimensional points in a flat `M
 # Fields
 - `storage::Matrix{T}`: The D×M matrix storing points in a binary heap layout.
 - `sentinel::BitVector`: Boolean mask marking which heap slots are used (true = occupied).
+- 'unused::BitVector': Is the node no longer reachable?
 """
 struct KDTreeMatrix{T}
     storage::Matrix{T}
@@ -27,7 +28,7 @@ Recursive internal function to build a heap-like KDTree in-place.
 
 This partitions the space and places medians in heap order.
 """
-function KDTree!_(x::Matrix, heap_storage::Matrix, sentinel, unused, depth = 0, index = 1, left = 1, right = size(x,2))
+function KDTree!_(x::Matrix, heap_storage::Matrix, sentinel, depth = 0, index = 1, left = 1, right = size(x,2))
 
     D, N = size(x)
     if left == right
@@ -40,11 +41,10 @@ function KDTree!_(x::Matrix, heap_storage::Matrix, sentinel, unused, depth = 0, 
     median_index = div(left + right,2)
     quickselect!(x, median_index, [currdim,:], left, right)
     sentinel[index] = true
-    unused[index] = false
     heap_storage[:, index] .= @views x[:, median_index]
 
-    KDTree!_(x, heap_storage, sentinel, unused, depth + 1, 2*index, left, median_index)
-    KDTree!_(x, heap_storage, sentinel, unused, depth + 1, 2*index+1, median_index+1, right)
+    KDTree!_(x, heap_storage, sentinel,  depth + 1, 2*index, left, median_index)
+    KDTree!_(x, heap_storage, sentinel,  depth + 1, 2*index+1, median_index+1, right)
     
 
 end
@@ -67,14 +67,13 @@ function KDTreeMatrix(x::Matrix{T}) where T
     buffer *= 2
     storage = Matrix{T}(undef,D, buffer)
     sentinel = falses(buffer)
-    unused = falses(buffer)
-    KDTree!_(x,storage,sentinel, unused)
-    return KDTreeMatrix{T}(storage,sentinel,unused)
+    KDTree!_(x,storage,sentinel)
+    return KDTreeMatrix{T}(storage,sentinel,.!sentinel)
 
 end
 
 """
-    knn_search(tree::KDTreeMatrix{T}, query::AbstractVector{T}) -> (best_index, best_distance)
+    nn_search(tree::KDTreeMatrix{T}, query::AbstractVector{T}) -> (best_index, best_distance)
 
 Performs a nearest-neighbor search in the KDTree for the query point.
 
@@ -85,7 +84,7 @@ This is a recursive search that respects the heap layout (2i and 2i+1 children).
 function nn_search(tree::KDTreeMatrix{T}, query::Vector{T}) where T
 
     function recursor(query,index, depth, best_dist = typemax(T), best_index = -1)
-        if tree.unused[index] || index > length(tree.sentinel)
+        if  index > length(tree.sentinel) || tree.unused[index]
             return best_dist, best_index
         end
 
