@@ -31,7 +31,9 @@ This partitions the space and places medians in heap order.
 function KDTree!_(x::Matrix, heap_storage::Matrix, sentinel, depth = 0, index = 1, left = 1, right = size(x,2))
 
     D, N = size(x)
-    if left == right
+    if left > right
+        return 
+    elseif left == right
         heap_storage[:, index] .= @views x[:, left]
         sentinel[index] = true
         return
@@ -43,7 +45,7 @@ function KDTree!_(x::Matrix, heap_storage::Matrix, sentinel, depth = 0, index = 
     sentinel[index] = true
     heap_storage[:, index] .= @views x[:, median_index]
 
-    KDTree!_(x, heap_storage, sentinel,  depth + 1, 2*index, left, median_index)
+    KDTree!_(x, heap_storage, sentinel,  depth + 1, 2*index, left, median_index-1)
     KDTree!_(x, heap_storage, sentinel,  depth + 1, 2*index+1, median_index+1, right)
     
 
@@ -128,7 +130,7 @@ Lzaily deletes an elemement from a KDTreeMatrix
 function lazydelete!(x::KDTreeMatrix, index::Int)
     x.sentinel[index] = false
     L = length(x.sentinel)
-    if 2*index > L || (x.unused[2*index] && x.unused[2*index + 1])
+    if 2*index > L || 2*index + 1 > L || (x.unused[2*index] && x.unused[2*index + 1])
         x.unused[index] = true
     end
     return 

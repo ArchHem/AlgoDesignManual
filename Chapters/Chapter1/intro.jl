@@ -69,7 +69,11 @@ dimensions = 4
 function TSP_greedy_comp(sizes = [100, 200, 400, 800, 1600], dimensions = 4)
     naive_times = Float64[]
     kd_times = Float64[]
-
+    x = rand(Float64, dimensions, 1000)
+    dist1 = TSP_greed_naive_views(x)
+    dist2 = greedy_TSP_kd(x)
+    
+    println(dist1 == dist2)
     for N in sizes
         println("Running for N = $N")
         x = rand(Float64, dimensions, N)
