@@ -130,8 +130,23 @@ Lzaily deletes an elemement from a KDTreeMatrix
 function lazydelete!(x::KDTreeMatrix, index::Int)
     x.sentinel[index] = false
     L = length(x.sentinel)
-    if 2*index > L || 2*index + 1 > L || (x.unused[2*index] && x.unused[2*index + 1])
-        x.unused[index] = true
+    #propegate soft deletion upward
+    while index > 0
+        if !x.sentinel[index]
+            left = 2 * index
+            right = 2 * index + 1
+            left_unused = left > L || x.unused[left]
+            right_unused = right > L || x.unused[right]
+
+            if left_unused && right_unused
+                x.unused[index] = true
+            else
+                break
+            end
+        else
+            break
+        end
+        index = div(index, 2)
     end
     return 
 end
