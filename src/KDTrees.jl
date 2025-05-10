@@ -198,7 +198,7 @@ end
 function nn_search(tree, query::Vector{T}, 
         depth = 0, best_dist = typemax(T), best_node = nothing) where T
     
-    if isnothing(tree) || (isnothing(tree.left) && isnothing(tree.right))
+    if isnothing(tree)
         return best_dist, best_node
     end
 
