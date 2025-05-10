@@ -69,25 +69,29 @@ dimensions = 4
 function TSP_greedy_comp(sizes = [100, 200, 400, 800, 1600], dimensions = 4)
     naive_times = Float64[]
     kd_times = Float64[]
+    naive_dists = Float64[]
+
+    # Warm-up and correctness check
     x = rand(Float64, dimensions, 1000)
     dist1 = TSP_greed_naive_views(x)
     dist2 = greedy_TSP_kd(x)
-    
-    println(dist1 == dist2)
+    println("Initial comparison (N = 1000): dist1 == dist2? ", isapprox(dist1, dist2; rtol=1e-6))
+
     for N in sizes
         println("Running for N = $N")
         x = rand(Float64, dimensions, N)
 
         # Benchmark both methods
-        naive_time = @elapsed TSP_greed_naive_views(x)
+        naive_time = @elapsed dist1 = TSP_greed_naive_views(x)
         kd_time = @elapsed greedy_TSP_kd(x)
 
+        # Record times and distances
         push!(naive_times, naive_time)
         push!(kd_times, kd_time)
+        push!(naive_dists, dist1)
     end
 
-    # Plotting
-    inst = plot(
+    p1 = plot(
         sizes,
         naive_times,
         label = "Naive Linear Search",
@@ -96,12 +100,24 @@ function TSP_greedy_comp(sizes = [100, 200, 400, 800, 1600], dimensions = 4)
         yscale = :log10,
         xlabel = "Number of Points (N)",
         ylabel = "Runtime (seconds, log scale)",
-        title = "Greedy TSP: Naive vs KD-Tree (rebuild_ratio = 0.7)"
+        title = "Greedy TSP: Runtime Comparison"
     )
-    plot!(sizes, kd_times, label = "KD-Tree", lw = 2, marker = :diamond)
+    plot!(p1, sizes, kd_times, label = "KD-Tree", lw = 2, marker = :diamond)
 
-    return inst
+    p2 = plot(
+        sizes,
+        naive_dists,
+        label = "Naive Distance",
+        lw = 2,
+        marker = :circle,
+        xlabel = "Number of Points (N)",
+        ylabel = "Total Path Length",
+        title = "Greedy TSP: Distances"
+    )
+
+    final_plot = plot(p1, p2, layout = (2, 1), size = (800, 600))
+    return final_plot
 end
 
-sizes = [2^i for i in 4:16]
+sizes = [2^i for i in 4:15]
 res = TSP_greedy_comp(sizes)

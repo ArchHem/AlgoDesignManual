@@ -85,7 +85,7 @@ This is a recursive search that respects the heap layout (2i and 2i+1 children).
 """
 function nn_search(tree::KDTreeMatrix{T}, query::Vector{T}) where T
 
-    function recursor(query,index, depth, best_dist = typemax(T), best_index = -1)
+    function recursor(query, index, depth, best_dist = typemax(T), best_index = -1)
         if  index > length(tree.sentinel) || tree.unused[index]
             return best_dist, best_index
         end
@@ -162,4 +162,118 @@ function rebuild(x::KDTreeMatrix)
     valid_storage = x.storage[:, x.sentinel]
     newtree = KDTreeMatrix(valid_storage)
     return newtree
+end
+
+mutable struct NodeKDTRee{T}
+    point::Vector{T}
+    dimension::Int64
+    parent::Union{NodeKDTRee{T},Nothing}
+    left::Union{NodeKDTRee{T},Nothing}
+    right::Union{NodeKDTRee{T},Nothing}
+end
+
+function NodeKDTRee(x::Matrix{T},level = 0, parent = nothing, left = 1, right = size(x,2)) where T
+    if left > right
+        return nothing
+    end
+    
+    dim = mod(level, size(x,1)) + 1
+    median_index = div(left + right,2)
+    quickselect!(x, median_index, [dim,:], left, right)
+    node = NodeKDTRee{T}(x[:, median_index], dim, parent, nothing, nothing)
+    node.left = NodeKDTRee(x, level + 1, node, left, median_index - 1)
+    node.right = NodeKDTRee(x, level + 1, node, median_index + 1, right)
+    return node
+end
+
+Base.show(io::IO, x::NodeKDTRee) = begin
+    println(io, "NodeKDTree:")
+    println(io, "  Parent: ", x.parent === nothing ? "Nothing" : x.parent.point)
+    println(io, "  Dimension: ", x.dimension)
+    println(io, "  Point: ", x.point)
+    println(io, "  Left: ", x.left === nothing ? "Nothing" : x.left.point)
+    println(io, "  Right: ", x.right === nothing ? "Nothing" : x.right.point)
+end
+
+function nn_search(tree, query::Vector{T}, 
+        depth = 0, best_dist = typemax(T), best_node = nothing) where T
+    
+    if isnothing(tree) || (isnothing(tree.left) && isnothing(tree.right))
+        return best_dist, best_node
+    end
+
+    actdist = sum(@. (tree.point - query)^2)
+    dim = mod(depth, length(tree.point)) + 1
+    diff = query[dim] - tree.point[dim]
+
+    if actdist < best_dist
+        best_dist = actdist
+        best_node = tree
+    end
+
+    split = diff < zero(T)
+    nearnode = split ? tree.left : tree.right
+    farnode = split ? tree.right : tree.left
+    best_dist, best_node = nn_search(nearnode, query, 
+        depth + 1, best_dist, best_node)
+    if diff^2 < best_dist
+        best_dist, best_node = nn_search(farnode, query, 
+            depth + 1, best_dist, best_node)
+    end
+
+    return best_dist, best_node
+
+end
+
+#find the minimum valued node along a given subtree
+function find_min(tree::NodeKDTRee{T}, dim::Int = tree.dimension) where T
+    if isnothing(tree)
+        return nothing
+    end
+
+    if tree.dimension == dim
+        #if leaf has no left children it must be minimum in that subtree...
+        return isnothing(tree.left) ? tree : find_min(tree.left, dim)
+    else
+        left_min = find_min(tree.left, dim)
+        right_min = find_min(tree.right, dim)
+        min_node = tree
+        for candidate in (left_min, right_min)
+            if candidate !== nothing && candidate.point[dim] < min_node.point[dim]
+                min_node = candidate
+            end
+        end
+        return min_node
+    end
+end
+
+function deleteat!(node::NodeKDTRee{T}) where T
+    if isnothing(node)
+        return nothing
+    end
+
+    if !isnothing(node.right)
+        min_node = find_min(node.right, node.dimension)
+        node.point = min_node.point
+        deleteat!(min_node)
+
+    elseif !isnothing(node.left)
+        min_node = find_min(node.left, node.dimension)
+        node.point = min_node.point
+
+        deleteat!(min_node)
+        node.right = node.left
+        node.left = nothing
+    else
+        if node.parent !== nothing
+
+            if node.parent.left === node
+                node.parent.left = nothing
+            elseif node.parent.right === node
+                node.parent.right = nothing
+            end
+        end
+        
+    end
+    return nothing
 end
