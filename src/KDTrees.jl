@@ -247,7 +247,7 @@ function find_min(tree::NodeKDTRee{T}, dim::Int = tree.dimension) where T
     end
 end
 
-function deleteat!(node::NodeKDTRee{T}) where T
+function remove_node!(node::NodeKDTRee{T}) where T
     if isnothing(node)
         return nothing
     end
@@ -255,13 +255,13 @@ function deleteat!(node::NodeKDTRee{T}) where T
     if !isnothing(node.right)
         min_node = find_min(node.right, node.dimension)
         node.point = min_node.point
-        deleteat!(min_node)
+        remove_node!(min_node)
 
     elseif !isnothing(node.left)
         min_node = find_min(node.left, node.dimension)
         node.point = min_node.point
 
-        deleteat!(min_node)
+        remove_node!(min_node)
         node.right = node.left
         node.left = nothing
     else
