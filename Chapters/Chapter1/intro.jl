@@ -5,8 +5,8 @@
 #Greedy method (implented without k-d lookup so scales N^2), see bellow for KD-method
 using Random, LinearAlgebra
 using BenchmarkTools, Plots
-include("../../src/AbstractModule.jl")
-using .Basics
+include("../../src/BasicSorts.jl")
+using .BasicSorts
 
 function TSP_greed_naive_views(x::AbstractMatrix{T}, start = zeros(T,size(x,1))) where T
     #precompute distance matrix 

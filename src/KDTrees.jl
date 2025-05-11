@@ -151,6 +151,34 @@ function lazydelete!(x::KDTreeMatrix, index::Int)
     return 
 end
 
+function add_point!(x::KDTreeMatrix{T}, point::Vector{T}, index = 1, level = 0) where T
+    D, N = x.storage
+    currdim = mod(level, D) + 1
+    if 2*index >= N
+        throw(ArgumentError("The current underlying storage can not allocate more space. Consider re-building the tree."))
+    end
+
+    if x.storage[currdim, index] > point[currdim]
+        leftindex = 2*index
+        if !x.sentinel[leftindex]
+            x.sentinel[leftindex] = true
+            x.unused[leftindex] = false
+            x.storage[:, leftindex] .= point
+        else
+            add_point!(x,point,leftindex, level + 1)
+        end
+    else
+        rightindex = 2*index + 1 
+        if !x.sentinel[rightindex]
+            x.sentinel[rightindex] = true
+            x.unused[rightindex] = false
+            x.storage[:, rightindex] .= point
+        else
+            add_point!(x,point,rightindex, level + 1)
+        end
+    end
+end
+
 """
     rebuild(x::KDTreeMatrix)
     Rebuild a KDTree, discarding all invalideted nodes

@@ -1,10 +1,10 @@
 using Test
 
-include("../src/AbstractModule.jl")
-using .Basics
+include("../src/BasicSorts.jl")
+using .BasicSorts
 using Random
 
-@testset "Node KDTree Tests" begin
+@testset "Node KDTree Initial Tests" begin
     rng = Xoshiro(3)
     D = 3
     N = 100
@@ -29,4 +29,9 @@ using Random
     @test secnearest.point == secpoint
     @test isapprox(secdist, 0.0)
 
+    new_point = rand(rng, D)
+    add_point!(root, new_point)
+    dist, nearest = nn_search(root, new_point)
+    @test nearest.point == new_point
+    @test isapprox(dist, 0.0)
 end
