@@ -53,10 +53,10 @@ function greedy_TSP_kd(x::AbstractMatrix{T}, start = zeros(T,size(x,1)), rebuild
             numelems = sum(tree.sentinel)
         end
         
-        i, point = nn_search(tree,currpoint)
+        bestdist, i = nn_search(tree,currpoint)
+        point = tree.storage[:, i]
         lazydelete!(tree,i)
-        displ = point - currpoint
-        totdist += sqrt(dot(displ,displ))
+        totdist += sqrt(bestdist)
         currelems -= 1
         currpoint = point
     end

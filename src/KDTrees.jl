@@ -74,6 +74,19 @@ function KDTreeMatrix(x::Matrix{T}) where T
 
 end
 
+function double_tree(x::KDTreeMatrix{T}) where T
+    D, N = size(x.storage)
+    new_N = 2*N + 1
+    new_storage = Matrix{T}(undef, D, new_N)
+    new_sentinel = falses(new_N)
+    new_unused = trues(new_N)
+
+    new_sentinel[1:N] .= x.sentinel
+    new_unused[1:N] .= x.unused
+    new_storage[:, 1:N] .= x.storage
+    return KDTreeMatrix{T}(new_storage, new_sentinel, new_unused)
+end
+
 """
     nn_search(tree::KDTreeMatrix{T}, query::AbstractVector{T}) -> (best_index, best_distance)
 
@@ -116,9 +129,9 @@ function nn_search(tree::KDTreeMatrix{T}, query::Vector{T}) where T
 
     end
 
-    _, index = recursor(query,1,0,typemax(T),-1)
+    bestdist, index = recursor(query,1,0,typemax(T),-1)
 
-    return index, tree.storage[:, index]
+    return bestdist, index
 end
 
 """
@@ -151,12 +164,10 @@ function lazydelete!(x::KDTreeMatrix, index::Int)
     return 
 end
 
+#TODO: add "nice" error handling for out of out of bounds errors
 function add_point!(x::KDTreeMatrix{T}, point::Vector{T}, index = 1, level = 0) where T
-    D, N = x.storage
+    D, N = size(x.storage)
     currdim = mod(level, D) + 1
-    if 2*index >= N
-        throw(ArgumentError("The current underlying storage can not allocate more space. Consider re-building the tree."))
-    end
 
     if x.storage[currdim, index] > point[currdim]
         leftindex = 2*index
@@ -164,6 +175,7 @@ function add_point!(x::KDTreeMatrix{T}, point::Vector{T}, index = 1, level = 0) 
             x.sentinel[leftindex] = true
             x.unused[leftindex] = false
             x.storage[:, leftindex] .= point
+            return nothing
         else
             add_point!(x,point,leftindex, level + 1)
         end
@@ -173,6 +185,7 @@ function add_point!(x::KDTreeMatrix{T}, point::Vector{T}, index = 1, level = 0) 
             x.sentinel[rightindex] = true
             x.unused[rightindex] = false
             x.storage[:, rightindex] .= point
+            return nothing
         else
             add_point!(x,point,rightindex, level + 1)
         end
@@ -192,15 +205,15 @@ function rebuild(x::KDTreeMatrix)
     return newtree
 end
 
-mutable struct NodeKDTRee{T}
+mutable struct NodeKDTree{T}
     point::Vector{T}
     dimension::Int64
-    parent::Union{NodeKDTRee{T},Nothing}
-    left::Union{NodeKDTRee{T},Nothing}
-    right::Union{NodeKDTRee{T},Nothing}
+    parent::Union{NodeKDTree{T},Nothing}
+    left::Union{NodeKDTree{T},Nothing}
+    right::Union{NodeKDTree{T},Nothing}
 end
 
-function NodeKDTRee(x::Matrix{T},level = 0, parent = nothing, left = 1, right = size(x,2)) where T
+function NodeKDTree(x::Matrix{T},level = 0, parent = nothing, left = 1, right = size(x,2)) where T
     if left > right
         return nothing
     end
@@ -208,13 +221,13 @@ function NodeKDTRee(x::Matrix{T},level = 0, parent = nothing, left = 1, right = 
     dim = mod(level, size(x,1)) + 1
     median_index = div(left + right,2)
     quickselect!(x, median_index, [dim,:], left, right)
-    node = NodeKDTRee{T}(x[:, median_index], dim, parent, nothing, nothing)
-    node.left = NodeKDTRee(x, level + 1, node, left, median_index - 1)
-    node.right = NodeKDTRee(x, level + 1, node, median_index + 1, right)
+    node = NodeKDTree{T}(x[:, median_index], dim, parent, nothing, nothing)
+    node.left = NodeKDTree(x, level + 1, node, left, median_index - 1)
+    node.right = NodeKDTree(x, level + 1, node, median_index + 1, right)
     return node
 end
 
-Base.show(io::IO, x::NodeKDTRee) = begin
+Base.show(io::IO, x::NodeKDTree) = begin
     println(io, "NodeKDTree:")
     println(io, "  Parent: ", x.parent === nothing ? "Nothing" : x.parent.point)
     println(io, "  Dimension: ", x.dimension)
@@ -254,7 +267,7 @@ function nn_search(tree, query::Vector{T},
 end
 
 #find the minimum valued node along a given subtree
-function find_min(tree::NodeKDTRee{T}, dim::Int = tree.dimension) where T
+function find_min(tree::NodeKDTree{T}, dim::Int = tree.dimension) where T
     if isnothing(tree)
         return nothing
     end
@@ -275,7 +288,7 @@ function find_min(tree::NodeKDTRee{T}, dim::Int = tree.dimension) where T
     end
 end
 
-function remove_node!(node::NodeKDTRee{T}) where T
+function remove_node!(node::NodeKDTree{T}) where T
     if isnothing(node)
         return nothing
     end
@@ -306,7 +319,7 @@ function remove_node!(node::NodeKDTRee{T}) where T
     return nothing
 end
 
-function add_point!(root::NodeKDTRee{T}, point::Vector{T}) where T
+function add_point!(root::NodeKDTree{T}, point::Vector{T}) where T
     #do we not wanna check if this is a topm node?
     
     dim = root.dimension
@@ -318,13 +331,13 @@ function add_point!(root::NodeKDTRee{T}, point::Vector{T}) where T
 
     if root.point[dim] > point[dim]
         if isnothing(root.left)
-            root.left = NodeKDTRee{T}(point, nextdim,root,nothing,nothing)
+            root.left = NodeKDTree{T}(point, nextdim,root,nothing,nothing)
         else
             add_point!(root.left,point)
         end
     else
         if isnothing(root.right)
-            root.right = NodeKDTRee{T}(point, nextdim,root,nothing,nothing)
+            root.right = NodeKDTree{T}(point, nextdim,root,nothing,nothing)
         else
             add_point!(root.right,point)
         end
