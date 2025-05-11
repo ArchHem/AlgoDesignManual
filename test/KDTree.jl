@@ -5,7 +5,7 @@ using .Basics
 using Random
 
 @testset "Node KDTree Tests" begin
-    rng = Xoshiro(1)
+    rng = Xoshiro(3)
     D = 3
     N = 100
     basedata = rand(rng, D, N)

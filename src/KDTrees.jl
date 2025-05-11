@@ -277,3 +277,28 @@ function remove_node!(node::NodeKDTRee{T}) where T
     end
     return nothing
 end
+
+function add_point!(root::NodeKDTRee{T}, point::Vector{T}) where T
+    #do we not wanna check if this is a topm node?
+    
+    dim = root.dimension
+    N = length(root.point)
+    if length(point) !=  N
+        throw(ArgumentError("Incompatible point sizes!"))
+    end
+    nextdim = mod(dim + 1, N) + 1
+
+    if root.point[dim] > point[dim]
+        if isnothing(root.left)
+            root.left = NodeKDTRee{T}(point, nextdim,root,nothing,nothing)
+        else
+            add_point!(root.left,point)
+        end
+    else
+        if isnothing(root.right)
+            root.right = NodeKDTRee{T}(point, nextdim,root,nothing,nothing)
+        else
+            add_point!(root.right,point)
+        end
+    end
+end
