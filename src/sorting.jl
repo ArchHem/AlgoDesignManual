@@ -62,7 +62,7 @@ function quicksort(X, dims, left = 1, right = nothing)
 end
 
 quicksort(X::AbstractVector) = quicksort(X,[:],firstindex(X),lastindex(X))
-quicksort!(X::AbstractVector) = quicksort(X,[:],firstindex(X),lastindex(X))
+quicksort!(X::AbstractVector) = quicksort!(X,[:],firstindex(X),lastindex(X))
 
 function quickselect!(X,k, dims, left = 1, right = nothing)
     if isnothing(right)
@@ -86,6 +86,8 @@ function quickselect!(X,k, dims, left = 1, right = nothing)
         end
     end
 end
+
+quickselect!(x::AbstractVector, k) = quickselect!(x, k, [:], firstindex(x), lastindex(x))
 
 function quickselect(X,k, dims, left = 1, right = nothing)
     if isnothing(right)
