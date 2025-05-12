@@ -267,7 +267,7 @@ function nn_search(tree, query::Vector{T},
 end
 
 #find the minimum valued node along a given subtree
-function find_min(tree::NodeKDTree{T}, dim::Int = tree.dimension) where T
+function find_min(tree, dim::Int = tree.dimension)
     if isnothing(tree)
         return nothing
     end
