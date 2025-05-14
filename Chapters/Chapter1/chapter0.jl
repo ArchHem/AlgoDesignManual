@@ -74,7 +74,8 @@ function compare_heuristics_plot()
     Ns = [50, 100, 200]
     dims = 1:10
     distributions = ["uniform", "normal", "exponential"]
-    
+    num_runs = 30
+
     plot_grid = []
 
     for dist in distributions
@@ -84,24 +85,41 @@ function compare_heuristics_plot()
 
             pairs = []
             tsps = []
-            for d in dims
-                Random.seed!(42)
-                x = dist == "uniform"      ? rand(d, N) :
-                    dist == "normal"       ? randn(d, N) : randexp(d, N)
 
-                #presead the greedy
-                mean_vec = mean(x, dims = 2)
+            pairs_std = []
+            tsp_std = []
+            for d in dims
+                tsp_results = Float64[]
+                pair_results = Float64[]
+
+                for _ in 1:num_runs
+                    Random.seed!(42)
+                    x = dist == "uniform"      ? rand(d, N) :
+                        dist == "normal"       ? randn(d, N) :
+                        dist == "exponential"  ? randexp(d, N) : error("Unknown distribution")
+
+                    mean_vec = mean(x, dims = 2)
+                    lsq = sum((mean_vec .- x).^2, dims = 1)
+                    index = argmin(vec(lsq))
+
+                    tsp = greedy_tsp(x, index)
+                    pair = greedy_pair_tsp(x)
+                    push!(tsp_results, tsp)
+                    push!(pair_results, pair)
+                end
+                mean_tsp = mean(tsp_results)
+                std_tsp = std(tsp_results)
+                mean_pair = mean(pair_results)
+                std_pair = std(pair_results)
                 
-                lsq = sum((mean_vec .- x).^2, dims = 1)
-                index = argmin(vec(lsq))
-                tsp = greedy_tsp(x, index)
-                pair = greedy_pair_tsp(x)
-                push!(tsps, tsp)
-                push!(pairs, pair)
-                
+                push!(tsps, mean_tsp)
+                push!(pairs, mean_pair)
+
+                push!(tsp_std, std_tsp)
+                push!(pairs_std, std_pair)
             end
-            scatter!(p, dims, tsps, label="TSP Naive Greedy", color = :red)
-            scatter!(p, dims, pairs, label="Pair Greedy",  color = :blue)
+            scatter!(p, dims, tsps, label="TSP Naive Greedy", color = :red, markersize = 3, yerr=tsp_std)
+            scatter!(p, dims, pairs, label="Pair Greedy",  color = :blue, markersize = 3, yerr=pairs_std)
             push!(plot_grid, p)
         end
     end
@@ -110,3 +128,5 @@ function compare_heuristics_plot()
 end
 
 result = compare_heuristics_plot()
+#pure greed kind of beter in Low-D,
+#pair much better in higher dimensions.   
