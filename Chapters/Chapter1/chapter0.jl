@@ -1,4 +1,4 @@
-using Random, Plots
+using Random, Plots, StatsBase
 
 #compare nearest vs nearest pair heuretic, 
 #we dont care about performance only relative distance
@@ -72,7 +72,7 @@ end
 
 function compare_heuristics_plot()
     Ns = [50, 100, 200]
-    dims = [1, 2, 3, 4, 8, 10, 12, 14, 16]
+    dims = 1:10
     distributions = ["uniform", "normal", "exponential"]
     
     plot_grid = []
@@ -87,17 +87,21 @@ function compare_heuristics_plot()
             for d in dims
                 Random.seed!(42)
                 x = dist == "uniform"      ? rand(d, N) :
-                    dist == "normal"       ? randn(d, N) :
-                    dist == "exponential"  ? randexp(d, N) : error("Unknown distribution")
+                    dist == "normal"       ? randn(d, N) : randexp(d, N)
 
-                tsp = greedy_tsp(x)
+                #presead the greedy
+                mean_vec = mean(x, dims = 2)
+                
+                lsq = sum((mean_vec .- x).^2, dims = 1)
+                index = argmin(vec(lsq))
+                tsp = greedy_tsp(x, index)
                 pair = greedy_pair_tsp(x)
                 push!(tsps, tsp)
                 push!(pairs, pair)
                 
             end
-            plot!(p, dims, tsps, label="TSP (d=$d)", lw=2, color = :red)
-            plot!(p, dims, pairs, label="Pair (d=$d)", lw=2, color = :blue)
+            scatter!(p, dims, tsps, label="TSP Naive Greedy", color = :red)
+            scatter!(p, dims, pairs, label="Pair Greedy",  color = :blue)
             push!(plot_grid, p)
         end
     end
