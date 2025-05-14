@@ -1,4 +1,4 @@
-using Random
+using Random, Plots
 
 #compare nearest vs nearest pair heuretic, 
 #we dont care about performance only relative distance
@@ -11,7 +11,7 @@ function greedy_tsp(x, index = 1)
     point = @views x[:, index]
     mask[index] = false
 
-    while remains >= 1
+    while remains > 1
         mindist = Inf
         newindex = -1
         for i in 1:N
@@ -26,6 +26,7 @@ function greedy_tsp(x, index = 1)
         point = x[:, newindex]
         mask[newindex] = false
         totdist += sqrt(mindist)
+        remains -= 1
     end
     return totdist
 end
@@ -67,3 +68,41 @@ function greedy_pair_tsp(x, index = 1)
     end
     return totdist
 end
+
+
+function compare_heuristics_plot()
+    Ns = [50, 100, 200]
+    dims = [1, 2, 3, 4, 8, 10, 12, 14, 16]
+    distributions = ["uniform", "normal", "exponential"]
+    
+    plot_grid = []
+
+    for dist in distributions
+        for N in Ns
+            println(dist, " ", N)
+            p = plot(title="$dist, N=$N", xlabel="Dimension", ylabel="Total Distance", legend=:bottomright)
+
+            pairs = []
+            tsps = []
+            for d in dims
+                Random.seed!(42)
+                x = dist == "uniform"      ? rand(d, N) :
+                    dist == "normal"       ? randn(d, N) :
+                    dist == "exponential"  ? randexp(d, N) : error("Unknown distribution")
+
+                tsp = greedy_tsp(x)
+                pair = greedy_pair_tsp(x)
+                push!(tsps, tsp)
+                push!(pairs, pair)
+                
+            end
+            plot!(p, dims, tsps, label="TSP (d=$d)", lw=2, color = :red)
+            plot!(p, dims, pairs, label="Pair (d=$d)", lw=2, color = :blue)
+            push!(plot_grid, p)
+        end
+    end
+
+    return plot(plot_grid..., layout=(3, 3), size=(1200, 900))
+end
+
+result = compare_heuristics_plot()
