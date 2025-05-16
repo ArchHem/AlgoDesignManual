@@ -185,18 +185,18 @@ function benchmark_divisions_3d()
     naive_times_ms = naive_times .* 1e3
     fast_times_ms = fast_times .* 1e3
 
-    p1 = scatter(divisors, quotients, naive_times_ms,
+    p1 = surface(divisors, quotients, naive_times_ms,
         xlabel="Divisor (d)", ylabel="Quotient (q)", zlabel="Time (ms)",
         title="Naive Division Time", legend=false)
 
-    p2 = scatter(divisors, quotients, fast_times_ms,
+    p2 = surface(divisors, quotients, fast_times_ms,
         xlabel="Divisor (d)", ylabel="Quotient (q)", zlabel="Time (ms)",
         title="Fast Bitwise Division Time", legend=false)
 
     plot(p1, p2, layout=(1, 2), size=(1000, 400))
 end
 
-res = benchmark_divisions_3d()
+#res = benchmark_divisions_3d()
 
 #25 horses, find 3 fastest (in order), we can 
 
