@@ -1,5 +1,5 @@
 using Random, Plots, StatsBase
-
+using BenchmarkTools, Plots
 #compare nearest vs nearest pair heuretic, 
 #we dont care about performance only relative distance
 
@@ -71,7 +71,7 @@ end
 
 
 function compare_heuristics_plot()
-    Ns = [50, 100, 200]
+    Ns = [10, 25, 50]
     dims = 1:10
     distributions = ["uniform", "normal", "exponential"]
     num_runs = 30
@@ -128,5 +128,87 @@ function compare_heuristics_plot()
 end
 
 result = compare_heuristics_plot()
+
+
 #pure greed kind of beter in Low-D,
 #pair much better in higher dimensions.   
+
+#could use a relaxation algo 
+
+#Interview problems
+
+#1 integer division
+
+function naive_floor_div(a, b)
+    remains = a
+    n = 0
+    while remains >= b
+        
+        remains -= b
+        n += 1
+    end
+    return n, remains
+end
+
+
+
+function fast_floor_div(n::T, d::T) where {T<:UInt}
+    q = zero(T)
+    r = zero(T)
+
+    width = sizeof(T) * 8
+    for i in reverse(0:width-1)
+        r <<= 1 #shift left by one bit (multiply by 2)
+        r |= (n >> i) & 1 #get i-th bit
+        if r >= d #if still bigger than divisor then....
+            r -= d
+            q |= T(1) << i #write into n-th digit of quotient via shifting and OR-ing 
+        end
+    end
+    return q, r
+end
+
+function benchmark_divisions_3d()
+    quotients = UInt64.(round.(LinRange(1, 10^7, 20)))
+    divisors = UInt64.(round.(LinRange(1, 10^6, 5)))
+
+    naive_times = zeros(Float64, length(quotients), length(divisors))
+    fast_times = zeros(Float64, length(quotients), length(divisors))
+
+    for (i, q) in enumerate(quotients)
+        for (j, d) in enumerate(divisors)
+            naive_times[i, j] = @belapsed naive_floor_div($q, $d) samples=20
+            fast_times[i, j] = @belapsed fast_floor_div($d, $d) samples=20
+        end
+    end
+
+    naive_times_ms = naive_times .* 1e3
+    fast_times_ms = fast_times .* 1e3
+
+    p1 = scatter(divisors, quotients, naive_times_ms,
+        xlabel="Divisor (d)", ylabel="Quotient (q)", zlabel="Time (ms)",
+        title="Naive Division Time", legend=false)
+
+    p2 = scatter(divisors, quotients, fast_times_ms,
+        xlabel="Divisor (d)", ylabel="Quotient (q)", zlabel="Time (ms)",
+        title="Fast Bitwise Division Time", legend=false)
+
+    plot(p1, p2, layout=(1, 2), size=(1000, 400))
+end
+
+res = benchmark_divisions_3d()
+
+#25 horses, find 3 fastest (in order), we can 
+
+#race all 25 horses in groups of 5 (+5) (1)
+
+#This reduces the potential location of the 3 fastest to 15 indeces
+
+#Race the fastest 5 horses from their respective races: the winner by definition is the fastest horse (+1) (2)
+
+#To get the second. 
+#it is either the second fastest in the previous race, or the horse that came in second in race (1) and was in the same group as the fastest horse.
+#Similarly, the third fastest row is either one of teh above 2 horses, or one of the three that came 3rd in the top race, 2nd in the 2nd race or first in the 3rd race
+#So, we put these fice horses in the race and determine teh 2nd and 3rd (+1)
+
+#7 races in total
