@@ -11,8 +11,7 @@ struct SimpleLinkNode{T} <: SimpleLinkedList{T}
 end
 
 SimpleLinkNode(x::T, next::SimpleLinkedList{T}) where T = SimpleLinkNode{T}(x, next)
-SimpleLinkNode(x::T) where T = SimpleLinkNode(x, EndNode(T))
-EndNode(x::T) where T = EndNode{T}()
+EndNode(T) = EndNode{T}()
 
 SimpleLinkedList() = EndNode{Nothing}()
 
@@ -40,18 +39,16 @@ Base.iterate(x::SimpleLinkedList, ::EndNode) = nothing
 
 #iterator for non-end nodes
 function Base.iterate(x::SimpleLinkedList, state::SimpleLinkNode = x)
-    return x.value, x.next
+    return state.value, state.next
 end
 
-Base.:(==)(x::EndNode, y::EndNode) = true
-Base.:(==)(x::SimpleLinkNode, y::SimpleLinkNode) = (x.value == y.value) && (x.next == y.next)
-function Base.Vector(x::SimpleLinkNode) 
+function Base.collect(x::SimpleLinkNode) 
     T = eltype(x)
     N = length(x)
     res = T[]
     sizehint!(res,N)
     for elem in x
-        push!(res, elem.value)
+        push!(res, elem)
     end
     return res
 end
@@ -65,12 +62,6 @@ function Base.reverse(x::SimpleLinkedList{T}) where T
         node = SimpleLinkNode(elem, node)
     end
     return node
-end
-#not quite a push operator
-function insert!(x::SimpleLinkNode{T}, y::T) where T
-    nextnode = x.next
-    x.next = SimpleLinkNode(y, nextnode)
-    return nothing
 end
 
 #Doubly-linked (circular) lists

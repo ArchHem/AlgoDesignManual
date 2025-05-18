@@ -50,3 +50,5 @@ using .BasicLists
 
 list = SimpleLinkedList(elements...)
 reversed_list = reverse(list)
+#collect...
+reversed_vector = collect(reversed_list)
