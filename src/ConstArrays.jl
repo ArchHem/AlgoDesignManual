@@ -21,7 +21,7 @@ function Base.reverse(x::ConstVector{T,N}) where {T,N}
     return ConstVector{T,N}(reverse(x.data))
 end
 
-Base.show(io::IO, x::ConstVector{T,N}) where {T,N}= print(io::IO, x.data)
+Base.show(io::IO, x::ConstVector{T,N}) where {T,N} = print(io,"ConstVector{$T,$N}(", x.data, ")")
 Base.:(==)(x::ConstVector{T,N}, y::ConstVector{T,N}) where {T,N} = x.data == y.data
 Base.iterate(x::ConstVector{T,N}) where {T,N} = iterate(x.data)
 #recycle iteration thru tuples...
@@ -39,6 +39,7 @@ struct CVStyle{N} <: Broadcast.BroadcastStyle end
 
 Broadcast.BroadcastStyle(::Type{ConstVector{T,N}}) where {T,N} = CVStyle{N}()
 #Promote broadcast to our style...
+Broadcast.BroadcastStyle(::CVStyle{N}, ::Broadcast.DefaultArrayStyle{M}) where {N, M} = Broadcast.DefaultArrayStyle{M}()
 Broadcast.BroadcastStyle(::CVStyle{N}, ::Broadcast.DefaultArrayStyle{0}) where N = CVStyle{N}()
 
 function Broadcast.materialize(B::Broadcast.Broadcasted{CVStyle{N}}) where N
@@ -46,6 +47,5 @@ function Broadcast.materialize(B::Broadcast.Broadcasted{CVStyle{N}}) where N
     args = flat.args
     f = flat.f
     datas = map(a -> a isa ConstVector ? a.data : Ref(a), args)
-    println(datas)
     ConstVector(f.(datas...))
 end
