@@ -5,7 +5,8 @@ abstract type StaticLinkedList{T} <: LinkedList{T} end
 abstract type MLinkedList{T} <: LinkedList{T} end
 
 Base.eltype(x::AbstractList{T}) where T = T
-
+Base.ndims(::Type{<:AbstractList{T}}) where T = 1
+Base.size(x::AbstractList{T}) where T = (length(x),)
 #----------------------------
 #Immutable, simply linked list
 
@@ -129,6 +130,19 @@ function Base.collect(x::LinkedList{T}) where T
     end
     return output
 end
+
+#broadcast machinery as fallback
+Base.Vector(x::LinkedList{T}) where T = collect(x)
+promote_rule(::Type{<:LinkedList{T}},::Type{<:Vector{S}}) where {T, S} = Vector{promote_type(T,S)}
+
+Broadcast.broadcastable(x::StaticLinkedList) = x
+
+struct SLLStyle{T} <: Broadcast.BroadcastStyle end
+
+Broadcast.BroadcastStyle(::Type{StaticListNode{T}}) where {T} = SLLStyle{T}
+#Promote broadcast to our style...
+Broadcast.BroadcastStyle(::SLLStyle{T}, ::Broadcast.DefaultArrayStyle{M}) where {T, M} = Broadcast.DefaultArrayStyle{M}()
+Broadcast.BroadcastStyle(::SLLStyle{T}, ::Broadcast.DefaultArrayStyle{0}) where T = SLLStyle{T}()
 
 #Mutable simply linked list
 #----------------------------------------------------

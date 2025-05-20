@@ -43,6 +43,10 @@ Broadcast.BroadcastStyle(::Type{ConstVector{T,N}}) where {T,N} = CVStyle{N}()
 Broadcast.BroadcastStyle(::CVStyle{N}, ::Broadcast.DefaultArrayStyle{M}) where {N, M} = Broadcast.DefaultArrayStyle{M}()
 Broadcast.BroadcastStyle(::CVStyle{N}, ::Broadcast.DefaultArrayStyle{0}) where N = CVStyle{N}()
 
+#does not fully work....
+#via https://discourse.julialang.org/t/broadcasting-power-with-integer-literal-issues/105449/2
+Base.Broadcast.broadcasted(::typeof(Base.literal_pow), ^, x::ConstVector{T,N}, ::Val{p}) where {T,N,p} = Base.broadcasted(CVStyle{N}(), ^, x, p)
+
 function Broadcast.materialize(B::Broadcast.Broadcasted{CVStyle{N}}) where N
     flat = Broadcast.flatten(B)
     args = flat.args
