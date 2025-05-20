@@ -15,6 +15,7 @@ Base.collect(x::ConstVector{T,N}) where {T,N} = collect(x.data)
 Base.Vector(x::ConstVector{T,N}) where {T, N} = collect(x)
 
 #we dont want large ConstVectors....
+#We could have AbstractVector here instead?
 promote_rule(::Type{<:ConstVector{T,N}},::Type{<:Vector{S}}) where {T, N, S} = Vector{promote_type(T,S)}
 
 function Base.reverse(x::ConstVector{T,N}) where {T,N}

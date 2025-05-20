@@ -1,68 +1,125 @@
 #similar logic used in the Datastructures.jl packae...
+abstract type AbstractList{T} end
+abstract type LinkedList{T} <: AbstractList{T} end
+abstract type StaticLinkedList{T} <: LinkedList{T} end
+abstract type MLinkedList{T} <: LinkedList{T} end
 
-abstract type SimpleLinkedList{T} end
+eltype(x::AbstractList{T}) where T = T
 
-struct EndNode{T} <: SimpleLinkedList{T}
-end
+#----------------------------
+#Immutable, simply linked list
 
-struct SimpleLinkNode{T} <: SimpleLinkedList{T}
+struct StaticListNode{T} <: StaticLinkedList{T}
     value::T
-    next::SimpleLinkedList{T}
+    next::StaticLinkedList{T}
 end
 
-SimpleLinkNode(x::T, next::SimpleLinkedList{T}) where T = SimpleLinkNode{T}(x, next)
-EndNode(T) = EndNode{T}()
+struct StaticListEnd{T} <: StaticLinkedList{T}
 
-SimpleLinkedList() = EndNode{Nothing}()
-
-function SimpleLinkedList(x::T...) where T
-    l = EndNode{T}()
-    for i in length(x):-1:1
-        l = SimpleLinkNode(x[i], l)
-    end
-    #return first node
-    return l
 end
 
-function Base.length(x::SimpleLinkedList)
-    le = 0
-    for i in x
-        le += 1
-    end
-    return le
+function StaticListEnd(x::T) where T
+    return StaticListEnd{T}()
 end
 
-Base.eltype(x::SimpleLinkedList{T}) where T = T
-
-#empty iterator
-Base.iterate(x::SimpleLinkedList, ::EndNode) = nothing
-
-#iterator for non-end nodes
-function Base.iterate(x::SimpleLinkedList, state::SimpleLinkNode = x)
-    return state.value, state.next
+function StaticListNode(x::T) where T
+    return StaticListNode{T}(x, StaticListEnd{T}())
 end
 
-function Base.collect(x::SimpleLinkNode) 
-    T = eltype(x)
-    N = length(x)
-    res = T[]
-    sizehint!(res,N)
-    for elem in x
-        push!(res, elem)
-    end
-    return res
+function StaticListNode(x::T, y::StaticLinkedList{T}) where T
+    return StaticListNode{T}(x, y)
 end
 
-#is in-place reveral possible?
-function Base.reverse(x::SimpleLinkedList{T}) where T
-    
-    node = EndNode(T)
-
-    for elem in x
-        node = SimpleLinkNode(elem, node)
+function StaticListNode(x...)
+    T = promote_type(typeof.(x)...)
+    node = StaticListNode(convert(T,x[end]))
+    #since its a tuple, its safe to rely on the default implementation.
+    for i in (length(x)-1):-1:1
+        node = StaticListNode{T}(convert(T,x[i]), node)
     end
     return node
 end
 
-#Doubly-linked (circular) lists
+function Base.reverse(x::StaticListNode{T}) where T
+    currbegin = StaticListEnd{T}()
+    for elem in x
+        currbegin = StaticListNode(elem, currbegin)
+    end
+    return currbegin
+end
+
+function Base.reverse(x::StaticListEnd{T}) where T
+    return x
+end
+
+Base.length(x::StaticListNode) = begin
+    n = 0
+    for elem in x
+        n +=1 
+    end
+    return n
+end
+
+Base.length(x::StaticListEnd) = begin
+    return 0
+end
+
+Base.copy(x::StaticListEnd) = x
+Base.copy(x::StaticListNode) = reverse(reverse(x))
+
+#iteration base case
+Base.iterate(l::StaticLinkedList, ::StaticListEnd) = nothing
+function Base.iterate(l::StaticLinkedList, state::StaticListNode = l)
+    state.value, state.next
+end
+
+Base.lastindex(x::StaticLinkedList) = length(x)
+Base.firstindex(x::StaticListNode) = 1
+Base.firstindex(x::StaticListEnd) = 0
+
+next(x::StaticListNode) = x.next
+next(x::StaticListEnd) = nothing
+value(x::StaticListNode) = x.value
+value(x::StaticListEnd) = nothing
+
+function Base.getindex(x::LinkedList, i::Int)
+    n = 1
+    for elem in x
+        if n == i
+            return elem
+        end
+        n += 1
+    end
+    throw(BoundsError(x, i))
+end
+
+Base.:(==)(x::LinkedList, y::LinkedList) = true
+Base.:(==)(x::LinkedList, y::LinkedList) = (value(x) == value(y)) && (next(x) == next(y))
+
+Base.map(f::Base.Callable, x::StaticListEnd) = x
+function Base.map(x::LinkedList{T})
+    #we build the new list from backwards...
+    first = f(value(x))
+    common_type = typeof(first) <: T : T : typeof(first)
+    first_node = StaticListNode(first, StaticListEnd(common_type))
+    for elem in x
+        first_node = StaticListNode(f(elem), first_node)
+    end
+    return reverse(first_node)
+end
+
+function Base.filter(x::LinkedList{T})
+    #we build the new list from backwards...
+    first = f(value(x))
+    common_type = typeof(first) <: T : T : typeof(first)
+    first_node = StaticListNode(first, StaticListEnd(common_type))
+    for elem in x
+        first_node = StaticListNode(f(elem), first_node)
+    end
+    return reverse(first_node)
+end
+
+#Mutable simply linked list
+#----------------------------------------------------
+
 

@@ -41,7 +41,7 @@ println(parantheses_order(ex3))
 #words, after the reversal all pointers should now point backwards. Your algorithm
 #should take linear time.
 
-#We have implemented the interafce for this. Simply iterate the linked list, and build it up from behind recusively
+#We have implemented the interfqce for this. Simply iterate the linked list, and build it up from behind recusively
 
 elements = 1:10
 
