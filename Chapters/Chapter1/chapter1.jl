@@ -48,7 +48,7 @@ elements = 1:10
 include("../../src/BasicLists.jl")
 using .BasicLists
 
-list = SimpleLinkedList(elements...)
+list = StaticListNode(elements...)
 reversed_list = reverse(list)
 #collect...
 reversed_vector = collect(reversed_list)

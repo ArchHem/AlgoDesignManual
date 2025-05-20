@@ -100,9 +100,9 @@ Base.map(f::Base.Callable, x::StaticListEnd) = x
 function Base.map(f::Base.Callable, x::StaticListNode{T}) where T
     #we build the new list from backwards...
     first = f(value(x))
-    common_type = typeof(first) <: T : T : typeof(first)
-    first_node = StaticListNode(first, StaticListEnd(common_type))
-    for elem in x
+    common_type = typeof(first) <: T ? T : typeof(first)
+    first_node = StaticListNode(first, StaticListEnd{common_type}())
+    for elem in next(x)
         first_node = StaticListNode(f(elem), first_node)
     end
     return reverse(first_node)
