@@ -133,7 +133,9 @@ end
 
 #broadcast machinery as fallback
 Base.Vector(x::LinkedList{T}) where T = collect(x)
-promote_rule(::Type{<:LinkedList{T}},::Type{<:Vector{S}}) where {T, S} = Vector{promote_type(T,S)}
+Base.promote_rule(::Type{<:StaticListNode{T}},::Type{<:StaticListNode{Z}}) where {T, Z} = StaticListNode{promote_type(T,Z)}
+Base.promote_rule(::Type{<:StaticListEnd{T}},::Type{<:StaticListEnd{Z}}) where {T, Z} = StaticListEnd{promote_type(T,Z)}
+Base.promote_rule(::Type{<:LinkedList{T}},::Type{<:Vector{S}}) where {T, S} = Vector{promote_type(T,S)}
 
 Broadcast.broadcastable(x::StaticLinkedList) = x
 
@@ -144,6 +146,13 @@ Broadcast.BroadcastStyle(::Type{StaticListNode{T}}) where {T} = SLLStyle{T}
 Broadcast.BroadcastStyle(::SLLStyle{T}, ::Broadcast.DefaultArrayStyle{M}) where {T, M} = Broadcast.DefaultArrayStyle{M}()
 Broadcast.BroadcastStyle(::SLLStyle{T}, ::Broadcast.DefaultArrayStyle{0}) where T = SLLStyle{T}()
 
+function Broadcast.materialize(B::Broadcast.Broadcasted{SLLStyle{T}}) where N
+    flat = Broadcast.flatten(B)
+    args = flat.args
+    f = flat.f
+    datas = map(a -> a isa ConstVector ? a.data : a, args)
+    ConstVector(f.(datas...))
+end
 #Mutable simply linked list
 #----------------------------------------------------
 

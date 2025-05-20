@@ -51,6 +51,6 @@ function Broadcast.materialize(B::Broadcast.Broadcasted{CVStyle{N}}) where N
     flat = Broadcast.flatten(B)
     args = flat.args
     f = flat.f
-    datas = map(a -> a isa ConstVector ? a.data : Ref(a), args)
+    datas = map(a -> a isa ConstVector ? a.data : a, args)
     ConstVector(f.(datas...))
 end
