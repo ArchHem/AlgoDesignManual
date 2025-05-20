@@ -1,4 +1,5 @@
 module BasicLists
 include("./LinkedList.jl")
-export LinkedList, StaticListEnd, StaticListNode
+export AbstractList, LinkedList, StaticLinkedList, MLinkedList
+export LinkedList, StaticListEnd, StaticListNode, value, next
 end

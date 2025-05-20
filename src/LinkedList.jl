@@ -4,7 +4,7 @@ abstract type LinkedList{T} <: AbstractList{T} end
 abstract type StaticLinkedList{T} <: LinkedList{T} end
 abstract type MLinkedList{T} <: LinkedList{T} end
 
-eltype(x::AbstractList{T}) where T = T
+Base.eltype(x::AbstractList{T}) where T = T
 
 #----------------------------
 #Immutable, simply linked list
@@ -93,11 +93,11 @@ function Base.getindex(x::LinkedList, i::Int)
     throw(BoundsError(x, i))
 end
 
-Base.:(==)(x::LinkedList, y::LinkedList) = true
+Base.:(==)(x::StaticListEnd, y::StaticListEnd) = true
 Base.:(==)(x::LinkedList, y::LinkedList) = (value(x) == value(y)) && (next(x) == next(y))
 
 Base.map(f::Base.Callable, x::StaticListEnd) = x
-function Base.map(x::LinkedList{T})
+function Base.map(f::Base.Callable, x::StaticListNode{T}) where T
     #we build the new list from backwards...
     first = f(value(x))
     common_type = typeof(first) <: T : T : typeof(first)
@@ -108,15 +108,26 @@ function Base.map(x::LinkedList{T})
     return reverse(first_node)
 end
 
-function Base.filter(x::LinkedList{T})
-    #we build the new list from backwards...
-    first = f(value(x))
-    common_type = typeof(first) <: T : T : typeof(first)
-    first_node = StaticListNode(first, StaticListEnd(common_type))
+function Base.filter(f::Function, x::StaticListNode{T}) where T
+    #Only join unto change if bool is true
+    bnode = StaticListEnd{T}()
     for elem in x
-        first_node = StaticListNode(f(elem), first_node)
+        if f(elem)
+            bnode = StaticListNode(elem, bnode)
+        end
     end
-    return reverse(first_node)
+    reverse(bnode)
+end
+
+#common interface
+Base.eachindex(x::LinkedList) = Base.OneTo(length(x))
+function Base.collect(x::LinkedList{T}) where T
+    L = length(x)
+    output = Vector{T}(undef, L)
+    for (i, elem) in enumerate(x)
+        output[i] = elem
+    end
+    return output
 end
 
 #Mutable simply linked list
