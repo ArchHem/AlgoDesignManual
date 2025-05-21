@@ -139,23 +139,36 @@ Base.promote_rule(::Type{<:StaticListNode{T}},::Type{<:StaticListNode{Z}}) where
 Base.promote_rule(::Type{<:StaticListEnd{T}},::Type{<:StaticListEnd{Z}}) where {T, Z} = StaticListEnd{promote_type(T,Z)}
 Base.promote_rule(::Type{<:LinkedList{T}},::Type{<:Vector{S}}) where {T, S} = Vector{promote_type(T,S)}
 
-Broadcast.broadcastable(x::StaticLinkedList) = x
+Base.Broadcast.broadcastable(x::StaticListNode) = x
 
-struct SLLStyle{T} <: Broadcast.BroadcastStyle end
+struct SLLStyle <: Base.Broadcast.BroadcastStyle end
 
-Broadcast.BroadcastStyle(::Type{StaticListNode{T}}) where {T} = SLLStyle{T}
+Base.Broadcast.BroadcastStyle(::Type{<:StaticListNode}) = SLLStyle()
 #Promote broadcast to our style...
-Broadcast.BroadcastStyle(::SLLStyle{T}, ::Broadcast.DefaultArrayStyle{M}) where {T, M} = Broadcast.DefaultArrayStyle{M}()
-Broadcast.BroadcastStyle(::SLLStyle{T}, ::Broadcast.DefaultArrayStyle{0}) where T = SLLStyle{T}()
+Base.Broadcast.BroadcastStyle(::SLLStyle, ::Base.Broadcast.DefaultArrayStyle{0}) = SLLStyle()
+Base.Broadcast.BroadcastStyle(::SLLStyle, ::Base.Broadcast.DefaultArrayStyle{M}) where {M} = Base.Broadcast.DefaultArrayStyle{M}()
 
-function Broadcast.materialize(B::Broadcast.Broadcasted{SLLStyle{T}}) where N
-    flat = Broadcast.flatten(B)
+
+function Base.Broadcast.materialize(B::Base.Broadcast.Broadcasted{SLLStyle})
+    flat = Base.Broadcast.flatten(B)
     args = flat.args
     f = flat.f
-    datas = map(a -> a isa StaticListNode ? collect(a) : a, args)
-    StaticListNode(f.(datas...)...)
+    primdata = map(a -> a isa StaticListNode ? value(a) : a, args)
+    listypes = eltype.(filter(x->isa(x,StaticListNode), args))
+    firstres = f(primdata...)
+    urtype = promote_type(listypes...)
+    otype = typeof(firstres)
+    ftype = otype <: urtype ? urtype : otype
+    datas = map(a -> a isa StaticListNode ? a : Iterators.repeated(a), args)
+    result = StaticListEnd{ftype}()
+    for elems in zip(datas...)
+        result = StaticListNode{ftype}(f(elems...), result)
+    end
+
+    return reverse(result)
 end
 #Mutable simply linked list
 #----------------------------------------------------
+
 
 

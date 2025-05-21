@@ -34,21 +34,21 @@ Base.:(-)(x::ConstVector{S,N}, y::ConstVector{T,N}) where {S,T,N} = ConstVector(
 
 #broadcasting, via the manual at: https://docs.julialang.org/en/v1/manual/interfaces/
 #and at https://discourse.julialang.org/t/custom-broadcasting-for-static-immutable-type/69426
-Broadcast.broadcastable(x::ConstVector) = x
+Base.Broadcast.broadcastable(x::ConstVector) = x
 
-struct CVStyle{N} <: Broadcast.BroadcastStyle end
+struct CVStyle{N} <: Base.Broadcast.BroadcastStyle end
 
-Broadcast.BroadcastStyle(::Type{ConstVector{T,N}}) where {T,N} = CVStyle{N}()
+Base.Broadcast.BroadcastStyle(::Type{ConstVector{T,N}}) where {T,N} = CVStyle{N}()
 #Promote broadcast to our style...
-Broadcast.BroadcastStyle(::CVStyle{N}, ::Broadcast.DefaultArrayStyle{M}) where {N, M} = Broadcast.DefaultArrayStyle{M}()
-Broadcast.BroadcastStyle(::CVStyle{N}, ::Broadcast.DefaultArrayStyle{0}) where N = CVStyle{N}()
+Base.Broadcast.BroadcastStyle(::CVStyle{N}, ::Base.Broadcast.DefaultArrayStyle{M}) where {N, M} = Broadcast.DefaultArrayStyle{M}()
+Base.Broadcast.BroadcastStyle(::CVStyle{N}, ::Base.Broadcast.DefaultArrayStyle{0}) where N = CVStyle{N}()
 
 #does not fully work....
 #via https://discourse.julialang.org/t/broadcasting-power-with-integer-literal-issues/105449/2
 Base.Broadcast.broadcasted(::typeof(Base.literal_pow), ^, x::ConstVector{T,N}, ::Val{p}) where {T,N,p} = Base.broadcasted(CVStyle{N}(), ^, x, p)
 
-function Broadcast.materialize(B::Broadcast.Broadcasted{CVStyle{N}}) where N
-    flat = Broadcast.flatten(B)
+function Base.Broadcast.materialize(B::Base.Broadcast.Broadcasted{CVStyle{N}}) where N
+    flat = Base.Broadcast.flatten(B)
     args = flat.args
     f = flat.f
     datas = map(a -> a isa ConstVector ? a.data : a, args)
