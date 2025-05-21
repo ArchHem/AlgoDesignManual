@@ -98,13 +98,15 @@ Base.:(==)(x::StaticListEnd, y::StaticListEnd) = true
 Base.:(==)(x::LinkedList, y::LinkedList) = (value(x) == value(y)) && (next(x) == next(y))
 
 Base.map(f::Base.Callable, x::StaticListEnd) = x
-function Base.map(f::Base.Callable, x::StaticListNode{T}) where T
+function Base.map(f::Base.Callable, x::StaticListNode...)
     #we build the new list from backwards...
-    first = f(value(x))
+    first = f(value.(x)...)
+    T = promote_type(eltype.(x)...)
     common_type = typeof(first) <: T ? T : typeof(first)
     first_node = StaticListNode(first, StaticListEnd{common_type}())
-    for elem in next(x)
-        first_node = StaticListNode(f(elem), first_node)
+    nextnodes = next.(x)
+    for elems in zip(nextnodes...)
+        first_node = StaticListNode(f(elems...), first_node)
     end
     return reverse(first_node)
 end
@@ -150,8 +152,8 @@ function Broadcast.materialize(B::Broadcast.Broadcasted{SLLStyle{T}}) where N
     flat = Broadcast.flatten(B)
     args = flat.args
     f = flat.f
-    datas = map(a -> a isa ConstVector ? a.data : a, args)
-    ConstVector(f.(datas...))
+    datas = map(a -> a isa StaticListNode ? collect(a) : a, args)
+    StaticListNode(f.(datas...)...)
 end
 #Mutable simply linked list
 #----------------------------------------------------
