@@ -5,7 +5,7 @@ abstract type StaticLinkedList{T} <: LinkedList{T} end
 abstract type MLinkedList{T} <: LinkedList{T} end
 
 Base.eltype(x::AbstractList{T}) where T = T
-Base.ndims(::Type{<:AbstractList{T}}) where T = 1
+Base.ndims(::AbstractList{T}) where T = 1
 Base.size(x::AbstractList{T}) where T = (length(x),)
 #----------------------------
 #Immutable, simply linked list
@@ -94,8 +94,8 @@ function Base.getindex(x::LinkedList, i::Int)
     throw(BoundsError(x, i))
 end
 
-Base.:(==)(x::StaticListEnd, y::StaticListEnd) = true
-Base.:(==)(x::LinkedList, y::LinkedList) = (value(x) == value(y)) && (next(x) == next(y))
+Base.:(==)(x::StaticListEnd{T}, y::StaticListEnd{Z}) where {T,Z} = true
+Base.:(==)(x::LinkedList{T}, y::LinkedList{Z}) where {T,Z} = (value(x) == value(y)) && (next(x) == next(y))
 
 Base.map(f::Base.Callable, x::StaticListEnd) = x
 function Base.map(f::Base.Callable, x::StaticListNode...)
