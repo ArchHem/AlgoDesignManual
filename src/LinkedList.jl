@@ -376,18 +376,22 @@ Base.promote_rule(::Type{<:MListNode{T}},::Type{<:StaticListNode{Z}}) where {T, 
 Base.promote_rule(::Type{<:MListEnd{T}},::Type{<:StaticListEnd{Z}}) where {T, Z} = MListEnd{promote_type{T,Z}}
 
 function MListNode(x::StaticListNode{T}) where T
-    next = next(x)
-    if next isa StaticListEnd
-        return MListNode{Z}(value(x), MListEnd{T}())
+    next_node = next(x)
+    if next_node isa StaticListEnd
+        return MListNode{T}(value(x), MListEnd{T}())
     else
-        return MListNode{Z}(value(x), MListNode(next(x)))
+        return MListNode{T}(value(x), MListNode(next(x)))
     end
 end
+
+Base.Broadcast.broadcastable(x::MListNode) = x
+
 
 struct MLLStyle <: Base.Broadcast.BroadcastStyle end
 Base.Broadcast.BroadcastStyle(::Type{<:MListNode}) = MLLStyle()
 Base.Broadcast.BroadcastStyle(::MLLStyle, ::Base.Broadcast.DefaultArrayStyle{0}) = MLLStyle()
 Base.Broadcast.BroadcastStyle(::MLLStyle, ::Base.Broadcast.DefaultArrayStyle{M}) where {M} = Base.Broadcast.DefaultArrayStyle{M}()
+Base.Broadcast.BroadcastStyle(::MLLStyle, ::SLLStyle) = Base.Broadcast.DefaultArrayStyle{0}()
 
 function Base.Broadcast.materialize(B::Base.Broadcast.Broadcasted{MLLStyle})
     flat = Base.Broadcast.flatten(B)
