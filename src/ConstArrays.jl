@@ -1,4 +1,5 @@
 #No need to re-create the whole of StaticArrays...
+module ConstArrays
 struct ConstVector{T,N} <: AbstractVector{T}
     data::NTuple{N,T}
 end
@@ -16,7 +17,7 @@ Base.Vector(x::ConstVector{T,N}) where {T, N} = collect(x)
 
 #we dont want large ConstVectors....
 #We could have AbstractVector here instead?
-promote_rule(::Type{<:ConstVector{T,N}},::Type{<:Vector{S}}) where {T, N, S} = Vector{promote_type(T,S)}
+Base.promote_rule(::Type{<:ConstVector{T,N}},::Type{<:Vector{S}}) where {T, N, S} = Vector{promote_type(T,S)}
 
 function Base.reverse(x::ConstVector{T,N}) where {T,N}
     return ConstVector{T,N}(reverse(x.data))
@@ -53,4 +54,6 @@ function Base.Broadcast.materialize(B::Base.Broadcast.Broadcasted{CVStyle{N}}) w
     f = flat.f
     datas = map(a -> a isa ConstVector ? a.data : a, args)
     ConstVector(f.(datas...))
+end
+export ConstVector
 end
