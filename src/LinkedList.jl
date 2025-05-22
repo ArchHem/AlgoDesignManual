@@ -138,6 +138,7 @@ end
 
 #broadcast machinery as fallback
 Base.Vector(x::LinkedList{T}) where T = collect(x)
+Base.convert(Z, x::LinkedList{T}) where {T} = convert(Z, collect(x))
 Base.promote_rule(::Type{<:StaticListNode{T}},::Type{<:StaticListNode{Z}}) where {T, Z} = StaticListNode{promote_type(T,Z)}
 Base.promote_rule(::Type{<:StaticListEnd{T}},::Type{<:StaticListEnd{Z}}) where {T, Z} = StaticListEnd{promote_type(T,Z)}
 Base.promote_rule(::Type{<:LinkedList{T}},::Type{<:Vector{S}}) where {T, S} = Vector{promote_type(T,S)}
