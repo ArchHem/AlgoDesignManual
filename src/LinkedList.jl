@@ -372,6 +372,17 @@ end
 
 Base.promote_rule(::Type{<:MListNode{T}},::Type{<:MListNode{Z}}) where {T, Z} = MListNode{promote_type(T,Z)}
 Base.promote_rule(::Type{<:MListEnd{T}},::Type{<:MListEnd{Z}}) where {T, Z} = MListEnd{promote_type(T,Z)}
+Base.promote_rule(::Type{<:MListNode{T}},::Type{<:StaticListNode{Z}}) where {T, Z} = MListNode{promote_type{T,Z}}
+Base.promote_rule(::Type{<:MListEnd{T}},::Type{<:StaticListEnd{Z}}) where {T, Z} = MListEnd{promote_type{T,Z}}
+
+function MListNode(x::StaticListNode{T}) where T
+    next = next(x)
+    if next isa StaticListEnd
+        return MListNode{Z}(value(x), MListEnd{T}())
+    else
+        return MListNode{Z}(value(x), MListNode(next(x)))
+    end
+end
 
 struct MLLStyle <: Base.Broadcast.BroadcastStyle end
 Base.Broadcast.BroadcastStyle(::Type{<:MListNode}) = MLLStyle()
@@ -393,9 +404,31 @@ function Base.Broadcast.materialize(B::Base.Broadcast.Broadcasted{MLLStyle})
     for elems in zip(datas...)
         result = MListNode{ftype}(f(elems...), result)
     end
-    return reverse(result)
+    return reverse!(result)
 end
 
+function Base.Broadcast.materialize!(dest::MListNode{T},B::Base.Broadcast.Broadcasted{MLLStyle}) where T
+    flat = Base.Broadcast.flatten(B)
+    args = flat.args
+    f = flat.f
+    primdata = map(a -> a isa MListNode ? value(a) : a, args)
+    listypes = eltype.(filter(x->isa(x,MListNode), args))
+    firstres = f(primdata...)
+    urtype = promote_type(listypes...)
+    otype = typeof(firstres)
+    ftype = otype <: urtype ? urtype : otype
+    if !(otype <: T)
+        throw(TypeError(Base.Broadcast.materialize!, otype, T))
+    end
+    datas = map(a -> a isa MListNode ? a : Iterators.repeated(a), args)
+    write_unto = dest
+    for elems in zip(datas...)
+        result = f(elems...)
+        write_unto.value = result
+        write_unto = write_unto.next
+    end
+    return dest
+end
 
 
 
