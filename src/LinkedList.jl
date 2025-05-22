@@ -330,14 +330,14 @@ function Base.filter(f::Function, x::MListNode{T}) where T
 end
 
 function popnext!(x::MListNode{T}) where T
-    next = next(x)
-    nextval = value(x)
-    next_next = next(next)
-    if next isa MListEnd
+    next_node = next(x)
+    nextval = value(next_node)
+    next_next = next(next_node)
+    if next_node isa MListEnd
         throw(BoundsError(x, 2))
     end
     x.next = next_next
-    next.next = MListEnd{T}()
+    next_node.next = MListEnd{T}()
     return nextval
 end
 
@@ -372,8 +372,8 @@ end
 
 Base.promote_rule(::Type{<:MListNode{T}},::Type{<:MListNode{Z}}) where {T, Z} = MListNode{promote_type(T,Z)}
 Base.promote_rule(::Type{<:MListEnd{T}},::Type{<:MListEnd{Z}}) where {T, Z} = MListEnd{promote_type(T,Z)}
-Base.promote_rule(::Type{<:MListNode{T}},::Type{<:StaticListNode{Z}}) where {T, Z} = MListNode{promote_type{T,Z}}
-Base.promote_rule(::Type{<:MListEnd{T}},::Type{<:StaticListEnd{Z}}) where {T, Z} = MListEnd{promote_type{T,Z}}
+Base.promote_rule(::Type{<:MListNode{T}},::Type{<:StaticListNode{Z}}) where {T, Z} = MListNode{promote_type(T,Z)}
+Base.promote_rule(::Type{<:MListEnd{T}},::Type{<:StaticListEnd{Z}}) where {T, Z} = MListEnd{promote_type(T,Z)}
 
 function MListNode(x::StaticListNode{T}) where T
     next_node = next(x)
