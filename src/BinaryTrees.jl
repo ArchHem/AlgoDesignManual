@@ -1,10 +1,10 @@
 module BinaryTrees
 
-
+#There is surprisngly little info on the AbstractDict type. As such, we do not subtype this.
 #Static BST, using a sorted list under the hood
-struct StaticBST{T} 
-    storage::Vector{T}
+struct StaticBST{T, Z}
     keys::Vector{T} #sorted array
+    values::Vector{Z}
 end
 
 #Elements of x must have a valid less-then implemented
@@ -28,4 +28,41 @@ function BinarySearch(x::AbstractVector{T}, key::T, left = firstindex(x), right 
     end
     return nothing
 end
+
+function StaticBST(keys::AbstractArray{T}, values::AbstractArray{Z})
+    if length(keys) != length(values)
+        throw(DimensionMismatch("Keys and values must have the same length."))
+    end
+    p = sortperm(keys)
+    #indexing implicitly copies.
+    return StaticBST{T, Z}(keys[p], values[p])
+end
+
+Base.keys(x::StaticBST) = x.keys
+Base.values(x::StaticBST) = x.values
+function Base.haskey(x::StaticBST, key)
+    index = BinarySearch(keys(x), key)
+    if isnothing(index)
+        return false
+    end
+    return true
+end
+
+function Base.getindex(x::StaticBST, key)
+    index = BinarySearch(keys(x), key)
+    if isnothing(index)
+        throw(KeyError(key))
+    end
+    return values(x)[index] 
+end
+
+function Base.setindex!(x::StaticBST, a, key)
+    index = BinarySearch(keys(x), key)
+    if isnothing(index)
+        throw(KeyError(key))
+    end
+    x.values[index] = a
+    return x
+end
+
 end
