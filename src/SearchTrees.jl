@@ -88,6 +88,27 @@ function Base.iterate(x::StaticBST{T,Z}, state) where {T,Z}
     if state > length(x)
         return nothing
     end
+    
+    return (x.keys[state] => x.values[state], state + 1)
+end
+
+Base.length(x::StaticBST) = length(values(x))
+Base.isempty(x::StaticBST) = isempty(values(x))
+
+#first gets called
+function Base.iterate(x::StaticBST{T, Z}) where {T,Z}
+    if isempty(x)
+        return nothing
+    end
+    i = 1
+    return (x.keys[i] => x.values[i], i + 1)
+end
+
+
+function Base.iterate(x::StaticBST{T,Z}, state) where {T,Z}
+    if state > length(x)
+        return nothing
+    end
     return (x.keys[state] => x.values[state], state + 1)
 end
 
