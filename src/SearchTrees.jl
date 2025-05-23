@@ -1,8 +1,11 @@
-module BinaryTrees
+module SearchTrees
+
+#Based on Chapter 1. a static """dictionary""" using a sorted list. This could be extended to be mutable: but pointer based structs are better there.
 
 #There is surprisngly little info on the AbstractDict type. As such, we do not subtype this.
 #Static BST, using a sorted list under the hood
-struct StaticBST{T, Z}
+abstract type SearchTree{T,Z} end
+struct StaticBST{T, Z} <: SearchTree{T,Z}
     keys::Vector{T} #sorted array
     values::Vector{Z}
 end
@@ -29,9 +32,12 @@ function BinarySearch(x::AbstractVector{T}, key::T, left = firstindex(x), right 
     return nothing
 end
 
-function StaticBST(keys::AbstractArray{T}, values::AbstractArray{Z})
+function StaticBST(keys::AbstractArray{T}, values::AbstractArray{Z}) where {T,Z}
     if length(keys) != length(values)
         throw(DimensionMismatch("Keys and values must have the same length."))
+    end
+    if length(Set(keys)) != length(keys)
+        throw(ArgumentError("Keys must not contain duplicates."))
     end
     p = sortperm(keys)
     #indexing implicitly copies.
@@ -65,4 +71,28 @@ function Base.setindex!(x::StaticBST, a, key)
     return x
 end
 
+Base.length(x::StaticBST) = length(values(x))
+Base.isempty(x::StaticBST) = isempty(values(x))
+
+#first gets called
+function Base.iterate(x::StaticBST{T, Z}) where {T,Z}
+    if isempty(x)
+        return nothing
+    end
+    i = 1
+    return (x.keys[i] => x.values[i], i + 1)
+end
+
+
+function Base.iterate(x::StaticBST{T,Z}, state) where {T,Z}
+    if state > length(x)
+        return nothing
+    end
+    return (x.keys[state] => x.values[state], state + 1)
+end
+
+Base.keytype(x::StaticBST{T,Z}) where {T,Z} = T
+Base.valtype(x::StaticBST{T,Z}) where {T,Z} = Z
+
+export StaticBST
 end
