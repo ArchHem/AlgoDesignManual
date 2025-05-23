@@ -8,6 +8,11 @@ abstract type SearchTree{T,Z} end
 struct StaticBST{T, Z} <: SearchTree{T,Z}
     keys::Vector{T} #sorted array
     values::Vector{Z}
+    function StaticBST{T, Z}(keys::Vector{T}, values::Vector{Z}) where {T,Z}
+        @assert issorted(keys) "Internal error: keys must be sorted!"
+        @assert length(Set(keys)) == length(keys) "Internal error: keys must be unique!"
+        new(keys, values)
+    end
 end
 
 #Elements of x must have a valid less-then implemented
@@ -41,7 +46,7 @@ function StaticBST(keys::AbstractArray{T}, values::AbstractArray{Z}) where {T,Z}
     end
     p = sortperm(keys)
     #indexing implicitly copies.
-    return StaticBST{T, Z}(keys[p], values[p])
+    return StaticBST{T, Z}(Vector{T}(keys[p]), Vector{Z}(values[p]))
 end
 
 Base.keys(x::StaticBST) = x.keys
