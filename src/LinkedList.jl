@@ -219,7 +219,7 @@ function Base.reverse!(l::MListNode{T}) where T
     prev = MListEnd{T}()
     current = l
     while current isa MListNode
-        next_node = current.next #sore next before modifying current
+        next_node = next(current) #sore next before modifying current
         current.next = prev
         prev = current
         current = next_node

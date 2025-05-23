@@ -52,3 +52,19 @@ list = StaticListNode(elements...)
 reversed_list = reverse(list)
 #collect...
 reversed_vector = collect(reversed_list)
+println(reversed_vector)
+#However, if we want to do this in O(1) memory, we most use the mutable version.
+#This is achieved by creating an emtpy node , say prev_node, then going thru the list from the beginning
+# At each iteration, get the next node (next_node)
+#Update the current nodes pointer to point to the prev_node
+#Update prev_node to be the current node
+#Update the current_node to be next_node
+#Repeat until teh current node remains a non-end-node
+#Return the new head.
+
+#This operates in-place and thus only uses O(1) aux memory at any moment.
+
+mlist = MListNode(elements...)
+y = reverse!(mlist)
+reversed_list = collect(y)
+println(reversed_list)
