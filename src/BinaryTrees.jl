@@ -29,9 +29,12 @@ function BinarySearch(x::AbstractVector{T}, key::T, left = firstindex(x), right 
     return nothing
 end
 
-function StaticBST(keys::AbstractArray{T}, values::AbstractArray{Z})
+function StaticBST(keys::AbstractArray{T}, values::AbstractArray{Z}) where {T,Z}
     if length(keys) != length(values)
         throw(DimensionMismatch("Keys and values must have the same length."))
+    end
+    if length(Set(keys)) != length(keys)
+        throw(ArgumentError("Keys must not contain duplicates."))
     end
     p = sortperm(keys)
     #indexing implicitly copies.
@@ -63,6 +66,27 @@ function Base.setindex!(x::StaticBST, a, key)
     end
     x.values[index] = a
     return x
+end
+
+Base.length(x::StaticBST) = length(values(x))
+Base.isempty(x::StaticBST) = isempty(values(x))
+
+#first gets called
+function Base.iterate(x::StaticBST{T, Z}) where {T,Z}
+    if isempty(x)
+        return nothing
+    end
+    i = 1
+    return (x.keys[i] => x.values[i], i + 1)
+end
+
+
+function Base.iterate(x::StaticBST{T,Z}, state) where {T,Z}
+    if state > length(x)
+        return nothing
+    end
+    
+    return (x.keys[state] => x.values[state], state + 1)
 end
 
 end
