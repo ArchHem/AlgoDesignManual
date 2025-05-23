@@ -63,10 +63,12 @@ Returns a `KDTreeMatrix{T}`.
 function KDTreeMatrix(x::Matrix{T}) where T
     D, N = size(x)
     buffer = 1
+    level = 1
     while buffer < N
-        buffer *= 2
+        level *= 2
+        buffer += level
     end
-    buffer *= 2
+    buffer += 2*level
     storage = Matrix{T}(undef,D, buffer)
     sentinel = falses(buffer)
     KDTree!_(x,storage,sentinel)
