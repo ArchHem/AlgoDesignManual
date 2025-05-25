@@ -155,29 +155,65 @@ loadbalance(x::AVLNode) = height(x.left) - height(x.right)
 Base.keytype(x::AVLTree{T,Z}) where {T,Z} = T
 Base.valtype(x::AVLTree{T,Z}) where {T,Z} = Z
 
-function keys_and_values(x::AVLNode{T,Z}) where {T,Z}
-    #use a stack 
-    #Technically, there is a higher bound on the number of elemnts, so we could pre-allocate...
+function _DFS(x::AVLNode{T,Z}) where {T,Z}
     lstack = AVLNode{T,Z}[]
     keys = T[]
     values = Z[]
-    push!(lstack, x)
-    while !isempty(lstack)
+    
+    current = x
+    while !isleaf(current) || !isempty(lstack)
+        while !isleaf(current)
+            push!(lstack, current)
+            current = left(current)
+        end
         currnode = pop!(lstack)
         push!(keys, key(currnode))
         push!(values, value(currnode))
-        #left-right order
-        if !isleaf(left(currnode))
-            push!(lstack, left(currnode))
-        end
-        if !isleaf(right(currnode))
-            push!(lstack, right(currnode))
-        end
+        current = right(currnode)
     end
+    
     return keys, values
 end
 
+#I.e. this will go like so:
+#        2
+#      1   3
+# [1 2 3]
+#i.e. keys are returned in sorted order
 
+#initial iterator
+function Base.iterate(x::AVLNode{T,Z}) where {T,Z}
+    stack = AVLNode{T,Z}[]
+    current = x
+    while !isleaf(current)
+        push!(stack, current)
+        current = current.left
+    end
+    returnnode = pop!(stack)
+    return (key(returnnode) => value(returnnode), (stack, right(returnnode)))
+end
+
+function Base.iterate(x::AVLNode{T,Z}, state) where {T,Z}
+    #this is not yet an end-node, but we already have a stack.
+    #Proceed with dfs.
+    
+    stack, prevright = state
+    current = prevright
+    while !isleaf(current)
+        push!(stack, current)
+        current = left(current)
+    end
+
+    #pop node and its key/value
+    if isempty(stack)
+        return nothing
+    else
+        returnode = pop!(stack)
+        return (key(returnnode) => value(returnode), (stack, right(returnode)))
+    end
+end
+
+Base.iterate(x::AVLEnd) = nothing
 
 export StaticBST, AVLTree, AVLNode, AVLEnd, SearchTree
 end
