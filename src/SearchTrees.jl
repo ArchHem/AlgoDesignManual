@@ -120,5 +120,40 @@ end
 Base.keytype(x::StaticBST{T,Z}) where {T,Z} = T
 Base.valtype(x::StaticBST{T,Z}) where {T,Z} = Z
 
-export StaticBST
+#AVL trees
+#------------------------------------------------------
+abstract type AVLTree{T,Z} <: SearchTree{T,Z} end
+
+mutable struct AVLNode{T,Z} <: AVLTree{T,Z}
+    key::T
+    value::Z
+    left::AVLTree{T,Z}
+    right::AVLTree{T,Z}
+    height::Int64
+end
+
+struct AVLEnd{T, Z} <: AVLTree{T,Z}
+    height::Int64
+end
+
+AVLEnd{T,Z}() where {T,Z} = AVLEnd{T,Z}(0)
+AVLNode(x::T, y::Z, left::AVLTree{T,Z}, right::AVLTree{T,Z}, height = 1) = AVLNode{T,Z}(x, y, left, right, height)
+
+isleaf(x::AVLNode) = false
+isleaf(x::AVLEnd) = true
+left(x::AVLNode) = x.left
+right(x::AVLNode) = x.right
+left(x::AVLEnd) = nothing
+right(x::AVLEnd) = nothing
+height(x::AVLTree) = x.height
+key(x::AVLNode) = x.key
+value(x::AVLNode) = x.value
+setheight!(x::AVLNode, h::Int64) = begin x.height = h end
+
+Base.keytype(x::AVLTree{T,Z}) where {T,Z} = T
+Base.valtype(x::AVLTree{T,Z}) where {T,Z} = Z
+
+
+
+export StaticBST, AVLTree, AVLNode, AVLEnd, SearchTree
 end
