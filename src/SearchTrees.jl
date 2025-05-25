@@ -133,11 +133,10 @@ mutable struct AVLNode{T,Z} <: AVLTree{T,Z}
 end
 
 struct AVLEnd{T, Z} <: AVLTree{T,Z}
-    height::Int64
 end
 
-AVLEnd{T,Z}() where {T,Z} = AVLEnd{T,Z}(0)
-AVLNode(x::T, y::Z, left::AVLTree{T,Z}, right::AVLTree{T,Z}, height = 1) = AVLNode{T,Z}(x, y, left, right, height)
+AVLNode(x::T, y::Z, left::AVLTree{T,Z}, right::AVLTree{T,Z}, height) where {T, Z} = AVLNode{T,Z}(x, y, left, right, height)
+AVLNode(x::T, y::Z) where {T,Z} = AVLNode{T,Z}(x, y, AVLEnd{T,Z}(), AVLEnd{T,Z}(), 1)
 
 isleaf(x::AVLNode) = false
 isleaf(x::AVLEnd) = true
@@ -145,13 +144,38 @@ left(x::AVLNode) = x.left
 right(x::AVLNode) = x.right
 left(x::AVLEnd) = nothing
 right(x::AVLEnd) = nothing
-height(x::AVLTree) = x.height
+height(x::AVLNode) = x.height
+height(x::AVLEnd) = 0
 key(x::AVLNode) = x.key
 value(x::AVLNode) = x.value
 setheight!(x::AVLNode, h::Int64) = begin x.height = h end
+setheight!(x::AVLNode) = begin x.height = max(height(x.left), height(x.right)) + 1 end
+loadbalance(x::AVLNode) = height(x.left) - height(x.right)
 
 Base.keytype(x::AVLTree{T,Z}) where {T,Z} = T
 Base.valtype(x::AVLTree{T,Z}) where {T,Z} = Z
+
+function keys_and_values(x::AVLNode{T,Z}) where {T,Z}
+    #use a stack 
+    #Technically, there is a higher bound on the number of elemnts, so we could pre-allocate...
+    lstack = AVLNode{T,Z}[]
+    keys = T[]
+    values = Z[]
+    push!(lstack, x)
+    while !isempty(lstack)
+        currnode = pop!(lstack)
+        push!(keys, key(currnode))
+        push!(values, value(currnode))
+        #left-right order
+        if !isleaf(left(currnode))
+            push!(lstack, left(currnode))
+        end
+        if !isleaf(right(currnode))
+            push!(lstack, right(currnode))
+        end
+    end
+    return keys, values
+end
 
 
 
