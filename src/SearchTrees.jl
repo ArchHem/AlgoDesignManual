@@ -209,11 +209,17 @@ function Base.iterate(x::AVLNode{T,Z}, state) where {T,Z}
         return nothing
     else
         returnode = pop!(stack)
-        return (key(returnnode) => value(returnode), (stack, right(returnode)))
+        return (key(returnode) => value(returnode), (stack, right(returnode)))
     end
 end
 
 Base.iterate(x::AVLEnd) = nothing
+
+Base.keys(x::AVLNode) = collect(k.first for k in x)
+Base.values(x::AVLNode) = collect(k.second for k in x)
+Base.keys(x::AVLEnd{T,Z}) where {T,Z} = T[]
+Base.values(x::AVLEnd{T,Z}) where {T,Z} = Z[]
+
 
 export StaticBST, AVLTree, AVLNode, AVLEnd, SearchTree
 end
