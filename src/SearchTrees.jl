@@ -346,6 +346,71 @@ function _insert_recursive!(node::AVLNode{T,Z}, k::T, v::Z) where {T,Z}
     return node
 end
 
+#deletion API
+function Base.delete!(x::AVLTree{T,Z}, k::T) where {T,Z}
+    new_root = _delete_recursive!(x, k)
+    return new_root
+end
+
+#no such key found
+function _delete_recursive!(node::AVLEnd{T,Z}, k::T) where {T,Z}
+    throw(KeyError(k))
+end
+
+function _delete_recursive!(node::AVLNode{T,Z}, k::T) where {T,Z}
+    if k < key(node)
+        node.left = _delete_recursive!(node.left, k)
+    elseif k > key(node)
+        node.right = _delete_recursive!(node.right, k)
+    else
+        #key found, and of the children are null
+        if isleaf(node.left) || isleaf(node.right)
+            #case: one of teh children are empty
+            temp = if isleaf(node.left)
+                        node.right
+                    else
+                        node.left
+                    end
+            if isleaf(temp)
+                return AVLEnd{T,Z}()
+            else
+                return temp
+            end
+        else
+            #In case no void children....
+            successor_key = minkey(node.right)
+            successor_value = getindex(node.right, successor_key)
+            node.key = successor_key
+            node.value = successor_value
+            node.right = _delete_recursive!(node.right, successor_key)
+        end
+    end
+    if isleaf(node)
+        return node
+    end
+
+    setheight!(node)
+    balance = loadbalance(node)
+    #rotation fixes
+    if balance > 1
+        if loadbalance(node.left) >= 0
+            return rotate_right!(node)
+        else
+            node.left = rotate_left!(node.left)
+            return rotate_right!(node)
+        end
+    end
+
+    if balance < -1
+        if loadbalance(node.right) <= 0
+            return rotate_left!(node)
+        else
+            node.right = rotate_right!(node.right)
+            return rotate_left!(node)
+        end
+    end
+    return node
+end
 
 #TODO? RB trees
 export StaticBST, AVLTree, AVLNode, AVLEnd, SearchTree, minkey, maxkey
