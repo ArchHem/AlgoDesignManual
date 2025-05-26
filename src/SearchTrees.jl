@@ -485,6 +485,16 @@ function AVLHead(itr)
     end
 end
 
+function is_tree_balanced(tree_ref::AVLTree)
+    isleaf(tree_ref) && return true
+    balance = loadbalance(tree_ref)
+    if !(balance in [-1, 0, 1])
+        return false
+    end
+    return is_tree_balanced(tree_ref.left) && is_tree_balanced(tree_ref.right)
+end
+
+
 #TODO? RB trees
-export StaticBST, AVLTree, AVLNode, AVLEnd, AVLHead, SearchTree, minkey, maxkey, isleaf, value, key, height, loadbalance
+export StaticBST, AVLTree, AVLNode, AVLEnd, AVLHead, SearchTree, minkey, maxkey, isleaf, value, key, height, loadbalance, is_tree_balanced
 end

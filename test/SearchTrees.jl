@@ -1,6 +1,7 @@
 include("../src/SearchTrees.jl")
 using .SearchTrees
 using Test
+using Random
 
 
 @testset "StaticBST Functionality" begin
@@ -296,5 +297,91 @@ end
         @test length(tree_untyped) == 7
         @test collect(keys(tree_untyped)) == [1, 2, 3, 4, 5, 6, 7]
     end
+
+    @testset "Random Inserts and Deletes" begin
+        tree = AVLHead{Int, String}()
+        num_operations = 1000
+        keys_to_insert = collect(1:num_operations)
+        shuffled_keys = shuffle(keys_to_insert)
+
+        for i in 1:num_operations
+            k = shuffled_keys[i]
+            v = "Value_$k"
+            tree[k] = v
+            @test is_tree_balanced(tree.ref)
+            @test length(tree) == i
+        end
+
+        shuffled_keys_to_delete = shuffle(keys_to_insert)
+        for i in 1:num_operations
+            k = shuffled_keys_to_delete[i]
+            if haskey(tree, k)
+                delete!(tree, k)
+                @test is_tree_balanced(tree.ref)
+                @test length(tree) == num_operations - i
+            end
+        end
+        @test isempty(tree)
+        @test is_tree_balanced(tree.ref)
+    end
+
+    @testset "Sequential Inserts and Deletes" begin
+        tree = AVLHead{Int, String}()
+        num_elements = 500
+
+        for i in 1:num_elements
+            tree[i] = "Value_$i"
+            @test is_tree_balanced(tree.ref)
+            @test length(tree) == i
+        end
+
+        for i in 1:num_elements
+            delete!(tree, i)
+            @test is_tree_balanced(tree.ref)
+            @test length(tree) == num_elements - i
+        end
+        @test isempty(tree)
+        @test is_tree_balanced(tree.ref)
+
+        tree = AVLHead{Int, String}()
+        for i in 1:num_elements
+            tree[i] = "Value_$i"
+            @test is_tree_balanced(tree.ref)
+        end
+
+        for i in num_elements:-1:1
+            delete!(tree, i)
+            @test is_tree_balanced(tree.ref)
+            @test length(tree) == i - 1
+        end
+        @test isempty(tree)
+        @test is_tree_balanced(tree.ref)
+    end
+
+    @testset "Mixed Inserts and Deletes" begin
+        tree = AVLHead{Int, String}()
+        initial_inserts = 200
+        for i in 1:initial_inserts
+            tree[i] = "Value_$i"
+        end
+        @test is_tree_balanced(tree.ref)
+        @test length(tree) == initial_inserts
+
+        num_mixed_ops = 500
+        for _ in 1:num_mixed_ops
+            op_type = rand(Bool)
+            if op_type && length(tree) < 500
+                key_to_op = rand(1:1000)
+                tree[key_to_op] = "Value_$key_to_op"
+            else
+                if !isempty(tree)
+                    k_to_delete = first(rand(keys(tree)))
+                    delete!(tree, k_to_delete)
+                end
+            end
+            @test is_tree_balanced(tree.ref)
+        end
+    end
+
 
 end
