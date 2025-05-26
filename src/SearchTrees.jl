@@ -270,22 +270,6 @@ function Base.getindex(x::AVLNode{T,Z}, i::T) where {T,Z}
     throw(KeyError(i))
 end
 
-function Base.setindex!(x::AVLNode{T,Z}, k::Z, i::T) where {T,Z}
-    #traversal
-    current = x
-    while !isleaf(current)
-        if key(current) == i
-            current.value = k
-            return nothing
-        elseif key(current) < i
-            current = current.right
-        else
-            current = current.left
-        end
-    end
-    throw(KeyError(i))
-end
-
 function Base.haskey(x::AVLNode{T,Z}, i::T) where {T,Z}
     #traversal
     current = x
@@ -301,7 +285,7 @@ function Base.haskey(x::AVLNode{T,Z}, i::T) where {T,Z}
     return false
 end
 
-#aux stuff
+#aux stuff, useful for deletion
 
 function maxkey(x::AVLNode)
     current = x
@@ -319,5 +303,50 @@ function minkey(x::AVLNode)
     return key(current)
 end
 
+function Base.setindex!(x::AVLNode{T,Z}, v::Z, k::T) where {T,Z}
+    return _insert_recursive!(x, k, v)
+end
+
+#base condition
+function _insert_recursive!(node::AVLEnd{T,Z}, k::T, v::Z) where {T,Z}
+    return AVLNode(k, v)
+end
+
+function _insert_recursive!(node::AVLNode{T,Z}, k::T, v::Z) where {T,Z}
+    #Standard traversion
+    if k < key(node)
+        node.left = _insert_recursive!(node.left, k, v)
+    elseif k > key(node)
+        node.right = _insert_recursive!(node.right, k, v)
+    else
+        #if key already exists, update its value (this is called by "setindex!")
+        node.value = v
+        return node
+    end
+    setheight!(node)
+    balance = loadbalance(node)
+    if balance > 1
+        #use the fact that the rotation returns the new head....
+        if k < key(node.left)
+            return rotate_right!(node)
+        else
+            node.left = rotate_left!(node.left)
+            return rotate_right!(node)
+        end
+    end
+
+    if balance < -1
+        if k > key(node.right)
+            return rotate_left!(node)
+        else
+            node.right = rotate_right!(node.right)
+            return rotate_left!(node)
+        end
+    end
+    return node
+end
+
+
+#TODO? RB trees
 export StaticBST, AVLTree, AVLNode, AVLEnd, SearchTree, minkey, maxkey
 end
