@@ -252,8 +252,8 @@ function Base.getindex(x::AVLNode{T,Z}, i::T) where {T,Z}
     current = x
     while !isleaf(current)
         if key(current) == i
-            return key(current)
-        elseif key(current) > i
+            return value(current)
+        elseif key(current) < i
             current = current.right
         else
             current = current.left
@@ -262,13 +262,14 @@ function Base.getindex(x::AVLNode{T,Z}, i::T) where {T,Z}
     throw(KeyError(i))
 end
 
-function Base.getindex(x::AVLNode{T,Z}, i::T) where {T,Z}
+function Base.setindex!(x::AVLNode{T,Z}, k::Z, i::T) where {T,Z}
     #traversal
     current = x
     while !isleaf(current)
         if key(current) == i
-            return key(current)
-        elseif key(current) > i
+            current.value = k
+            return nothing
+        elseif key(current) < i
             current = current.right
         else
             current = current.left
@@ -283,7 +284,7 @@ function Base.haskey(x::AVLNode{T,Z}, i::T) where {T,Z}
     while !isleaf(current)
         if key(current) == i
             return true
-        elseif key(current) > i
+        elseif key(current) < i
             current = current.right
         else
             current = current.left
