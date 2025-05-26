@@ -148,9 +148,12 @@ height(x::AVLNode) = x.height
 height(x::AVLEnd) = 0
 key(x::AVLNode) = x.key
 value(x::AVLNode) = x.value
-setheight!(x::AVLNode, h::Int64) = begin x.height = h end
-setheight!(x::AVLNode) = begin x.height = max(height(x.left), height(x.right)) + 1 end
+setheight!(x::AVLNode, h::Int64) = begin x.height = h 
+    return nothing end
+setheight!(x::AVLNode) = begin x.height = max(height(x.left), height(x.right)) + 1 
+    return nothing end
 loadbalance(x::AVLNode) = height(x.left) - height(x.right)
+isbalanced(x::AVLNode) = loadbalance(x) in [-1, 0, 1]
 
 Base.keytype(x::AVLTree{T,Z}) where {T,Z} = T
 Base.valtype(x::AVLTree{T,Z}) where {T,Z} = Z
@@ -220,6 +223,29 @@ Base.values(x::AVLNode) = collect(k.second for k in x)
 Base.keys(x::AVLEnd{T,Z}) where {T,Z} = T[]
 Base.values(x::AVLEnd{T,Z}) where {T,Z} = Z[]
 
+function rotate_left!(x::AVLNode)
+    new_root = right(x)
+    #rotate
+    new_right = left(new_root)
+    new_root.left = x
+    x.right = new_right
+    setheight!(x)
+    setheight!(new_root)
+    
+    return new_root
+end
+
+function rotate_right!(x::AVLNode)
+    new_root = left(x)
+    #rotate
+    new_left = right(new_root)
+    new_root.right = x
+    x.left = new_left
+    setheight!(x)
+    setheight!(new_root)
+    
+    return new_root
+end
 
 export StaticBST, AVLTree, AVLNode, AVLEnd, SearchTree
 end
