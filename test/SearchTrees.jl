@@ -79,6 +79,9 @@ using Test
         values_e = [1, 2, 3]
         bst_e = StaticBST(keys_e, values_e)
 
+        @test minkey(bst_e) == "one"
+        @test maxkey(bst_e) == "two"
+
         expected_pairs_e = ["one" => 1, "three" => 3, "two" => 2]
         expected_pairs_e_sorted = sort(expected_pairs_e, by=p->p.first)
         @test collect(bst_e) == expected_pairs_e_sorted

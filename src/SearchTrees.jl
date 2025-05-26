@@ -67,6 +67,14 @@ function Base.getindex(x::StaticBST, key)
     return values(x)[index] 
 end
 
+function maxkey(x::StaticBST)
+    return keys(x)[end]
+end
+
+function minkey(x::StaticBST)
+    return keys(x)[begin]
+end
+
 function Base.setindex!(x::StaticBST, a, key)
     index = BinarySearch(keys(x), key)
     if isnothing(index)
@@ -293,5 +301,23 @@ function Base.haskey(x::AVLNode{T,Z}, i::T) where {T,Z}
     return false
 end
 
-export StaticBST, AVLTree, AVLNode, AVLEnd, SearchTree
+#aux stuff
+
+function maxkey(x::AVLNode)
+    current = x
+    while !isleaf(current.right)
+        current = right(current)
+    end
+    return key(current)
+end
+
+function minkey(x::AVLNode)
+    current = x
+    while !isleaf(current.left)
+        current = left(current)
+    end
+    return key(current)
+end
+
+export StaticBST, AVLTree, AVLNode, AVLEnd, SearchTree, minkey, maxkey
 end
