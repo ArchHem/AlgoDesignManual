@@ -247,5 +247,50 @@ function rotate_right!(x::AVLNode)
     return new_root
 end
 
+function Base.getindex(x::AVLNode{T,Z}, i::T) where {T,Z}
+    #traversal
+    current = x
+    while !isleaf(current)
+        if key(current) == i
+            return key(current)
+        elseif key(current) > i
+            current = current.right
+        else
+            current = current.left
+        end
+    end
+    throw(KeyError(i))
+end
+
+function Base.getindex(x::AVLNode{T,Z}, i::T) where {T,Z}
+    #traversal
+    current = x
+    while !isleaf(current)
+        if key(current) == i
+            return key(current)
+        elseif key(current) > i
+            current = current.right
+        else
+            current = current.left
+        end
+    end
+    throw(KeyError(i))
+end
+
+function Base.haskey(x::AVLNode{T,Z}, i::T) where {T,Z}
+    #traversal
+    current = x
+    while !isleaf(current)
+        if key(current) == i
+            return true
+        elseif key(current) > i
+            current = current.right
+        else
+            current = current.left
+        end
+    end
+    return false
+end
+
 export StaticBST, AVLTree, AVLNode, AVLEnd, SearchTree
 end
