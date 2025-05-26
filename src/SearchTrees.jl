@@ -143,6 +143,12 @@ end
 struct AVLEnd{T, Z} <: AVLTree{T,Z}
 end
 
+mutable struct AVLHead{T,Z} <: SearchTree{T,Z}
+    ref::AVLTree{T,Z}
+    count::Int64
+end
+
+AVLHead{T,Z}() where {T,Z} = AVLHead{T,Z}(AVLEnd{T,Z}(),0)
 AVLNode(x::T, y::Z, left::AVLTree{T,Z}, right::AVLTree{T,Z}, height) where {T, Z} = AVLNode{T,Z}(x, y, left, right, height)
 AVLNode(x::T, y::Z) where {T,Z} = AVLNode{T,Z}(x, y, AVLEnd{T,Z}(), AVLEnd{T,Z}(), 1)
 
@@ -226,6 +232,10 @@ end
 
 Base.iterate(x::AVLEnd) = nothing
 
+function Base.length(x::AVLNode)
+    return 1 + length(left(x)) + length(right(x))
+end
+Base.length(x::AVLEnd) = 0
 Base.keys(x::AVLNode) = collect(k.first for k in x)
 Base.values(x::AVLNode) = collect(k.second for k in x)
 Base.keys(x::AVLEnd{T,Z}) where {T,Z} = T[]
@@ -255,6 +265,29 @@ function rotate_right!(x::AVLNode)
     return new_root
 end
 
+function Base.getindex(x::AVLHead{T,Z}, i::T) where {T,Z}
+    return getindex(x.ref, i)
+end
+
+function Base.haskey(x::AVLHead{T,Z}, i::T) where {T,Z}
+    return haskey(x.ref, i)
+end
+
+function Base.iterate(x::AVLHead{T,Z}) where {T,Z}
+    return iterate(x.ref)
+end
+
+function Base.iterate(x::AVLHead{T,Z}, state) where {T,Z}
+    return iterate(x.ref, state)
+end
+
+Base.keys(x::AVLHead) = keys(x.ref)
+Base.values(x::AVLHead) = values(x.ref)
+height(x::AVLHead) = height(x.ref)
+Base.isempty(x::AVLHead) = isleaf(x.ref)
+Base.keytype(x::AVLHead{T,Z}) where {T,Z} = T
+Base.valtype(x::AVLHead{T,Z}) where {T,Z} = Z
+
 function Base.getindex(x::AVLNode{T,Z}, i::T) where {T,Z}
     #traversal
     current = x
@@ -269,6 +302,8 @@ function Base.getindex(x::AVLNode{T,Z}, i::T) where {T,Z}
     end
     throw(KeyError(i))
 end
+
+Base.getindex(x::AVLEnd{T,Z}, i::T) where {T,Z} = throw(KeyError(i))
 
 function Base.haskey(x::AVLNode{T,Z}, i::T) where {T,Z}
     #traversal
@@ -285,6 +320,8 @@ function Base.haskey(x::AVLNode{T,Z}, i::T) where {T,Z}
     return false
 end
 
+Base.haskey(x::AVLEnd{T,Z}, i::T) where {T,Z} = false
+Base.length(x::AVLHead) = x.count
 #aux stuff, useful for deletion
 
 function maxkey(x::AVLNode)
@@ -303,8 +340,13 @@ function minkey(x::AVLNode)
     return key(current)
 end
 
-function Base.setindex!(x::AVLNode{T,Z}, v::Z, k::T) where {T,Z}
-    return _insert_recursive!(x, k, v)
+function Base.setindex!(x::AVLHead{T,Z}, v::Z, k::T) where {T,Z}
+    #performance bloat!!!! but retains time complexity.
+    was_new = !haskey(x, k)
+    x.ref = _insert_recursive!(x.ref, k, v)
+    if was_new
+        x.count += 1
+    end
 end
 
 #base condition
@@ -347,9 +389,14 @@ function _insert_recursive!(node::AVLNode{T,Z}, k::T, v::Z) where {T,Z}
 end
 
 #deletion API
-function Base.delete!(x::AVLTree{T,Z}, k::T) where {T,Z}
-    new_root = _delete_recursive!(x, k)
-    return new_root
+function Base.delete!(x::AVLHead{T,Z}, k::T) where {T,Z}
+    if haskey(x, k)
+        x.ref = _delete_recursive!(x.ref, k)
+        x.count -= 1
+    else
+        throw(KeyError(k))
+    end
+    return x
 end
 
 #no such key found
@@ -412,6 +459,32 @@ function _delete_recursive!(node::AVLNode{T,Z}, k::T) where {T,Z}
     return node
 end
 
+function Base.empty!(x::AVLHead{T,Z}) where {T,Z}
+    x.ref = AVLEnd{T,Z}()
+    x.count = 0
+    return x
+end
+
+function AVLHead{T,Z}(itr) where {T,Z}
+    tree = AVLHead{T,Z}()
+    for (k, v) in itr
+        tree[k] = v
+    end
+    return tree
+end
+
+function AVLHead(itr)
+    #crappy type inference 
+    iter_type = eltype(itr)
+    if iter_type <: Pair
+        K = iter_type.parameters[1]
+        V = iter_type.parameters[2]
+        return AVLHead{K, V}(itr)
+    else
+        throw(ArgumentError("Expected iterable of Pairs, got $iter_type"))
+    end
+end
+
 #TODO? RB trees
-export StaticBST, AVLTree, AVLNode, AVLEnd, SearchTree, minkey, maxkey
+export StaticBST, AVLTree, AVLNode, AVLEnd, AVLHead, SearchTree, minkey, maxkey, isleaf, value, key, height, loadbalance
 end
