@@ -6,13 +6,12 @@ struct BasicHeap{T}
 end
 
 function BasicHeap(x::Vector{T})
-    currlength = length(x)
-    storage = deepcopy(x)
-
+    storage = build_max_heap(x)
+    return BasicHeap{T}(storage)
 end
 
 #O(n) heapin func for max heas
-function heapify(x, L, i)
+function _heapify!(x, L, i)
     #L is true length of heap
     leftindex = 2*i
     rightindex = 2*i + 1
@@ -29,7 +28,23 @@ function heapify(x, L, i)
 
     if maxindex != i
         x[i], x[maxindex] = x[maxindex], x[i]
-        heapify(x, L, maxindex)
+        #repair  subtree
+        _heapify!(x, L, maxindex)
     end
-    return x
+    return nothing
+end
+
+function build_max_heap(x)
+    y = copy(x)
+    L = length(y)
+
+    #find first non-leaf node
+    non_leaf_length = div(L, 2)
+
+    #get back to prevous level...
+    non_leaf_length = currl - div(width, 2)
+    for i in non_leaf_length:-1:1
+        _heapify!(y, L, i)
+    end
+    return y
 end
