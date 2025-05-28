@@ -5,13 +5,13 @@ struct BasicHeap{T}
     storage::Vector{T}
 end
 
-function BasicHeap(x::Vector{T})
-    storage = build_max_heap(x)
+function BasicHeap(x::Vector{T}) where T
+    y = copy(x)
+    storage = build_max_heap!(y)
     return BasicHeap{T}(storage)
 end
 
-function build_max_heap(x)
-    y = copy(x)
+function build_max_heap!(y)
     L = length(y)
 
     #find first non-leaf node
@@ -85,4 +85,24 @@ function Base.pop!(heap::BasicHeap{T})::T where T
         _shift_down!(heap.storage, length(heap.storage), 1)
     end
     return max_val
+end
+
+function heapsort!(x::Vector{T}) where T
+    build_max_heap!(x)
+    N = length(x)
+
+    result = Vector{T}(undef, N)
+    heap = BasicHeap(x)
+
+    for i in reverse(1:N)
+        x[i] = pop!(heap)
+    end
+    return result
+end
+
+function heapsort(x::Vector{T}) where T
+    
+    y = deepcopy(x)
+    heapsort!(y)
+    return y
 end
