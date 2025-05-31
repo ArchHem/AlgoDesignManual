@@ -171,7 +171,28 @@ This strongly suggests that this will be yet another BST variant with some metad
 Maintain the size of each subtree rooted at a node. This can be initially be constructed during construction.
 
 When inserting a node, as we traverse down the tree, increase the "size" attribute of each visited node by +1. (log(N) operation).
-When we wish to delete the k-th smallest element
+When we wish to delete the k-th smallest element, we traverse as it follows: Keep note of the total size of the tree (i.e. size at head node)
+The left subtree at each location include the "smaller" elements. By keeping track of how many of the smallest and largest elements (i.e. size of left and right subtree)
+we ignored, we can keep that what range does our subtree include (i.e. from i-th smallest to j-th smallest).
 
+Let the initial range be 1 to N
+This is achieved as follows: At each node, with count 
+-if we traverse left, we now update our range as: (i, j) = i, min(j, N_left)
+-if we traverse right, we now update our range as: (i, j) = max(i, N_right), j
+
+#That is, we traverse to the k-th element, we always want to keep in range. 
+
+We do this via: 
+
+find_kth(k, node)
+    if k <= node.left.size
+        find_kth(k,node.left)
+    elseif k == node.leftt.size + 1 #current node is k-th
+        return node
+    else
+        find_kth(k - node.right.size - 1, k.right) #array had been shifted to right, and the current node can also be discounted.
+
+#Once the node is deleted, the node that we visite during travelsal (i.e., via storing their pointers 
+for instance) need to have their count to be decreased by 1.
 
 =#
