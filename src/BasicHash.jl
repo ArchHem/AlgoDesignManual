@@ -160,5 +160,16 @@ end
 
 Base.isempty(x::HashMap) = x.used_count == 0
 
+#Improved locality hash map.
+
+mutable struct HashMapImpr{T,Z}
+    #dark magics...
+    keys::Memory{T}
+    values::Memory{Z}
+    metadata::Memory{UInt8}
+
+    currelems::Int64
+end
+
 export HashNode, HashMap
 end
