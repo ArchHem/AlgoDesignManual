@@ -59,6 +59,9 @@ function find_bucket(x::HashMap{T,Z}, k::T) where {T,Z}
         end
         j += 1
     end
+    if first_deleted_slot != -1
+        return first_deleted_slot
+    end
     throw(KeyError(k))
 end
 
@@ -159,17 +162,6 @@ function HashMap(x::Pair{T,Z}...) where {T,Z}
 end
 
 Base.isempty(x::HashMap) = x.used_count == 0
-
-#Improved locality hash map.
-
-mutable struct HashMapImpr{T,Z}
-    #dark magics...
-    keys::Memory{T}
-    values::Memory{Z}
-    metadata::Memory{UInt8}
-
-    currelems::Int64
-end
 
 export HashNode, HashMap
 end
