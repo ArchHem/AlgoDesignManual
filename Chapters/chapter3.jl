@@ -196,3 +196,119 @@ find_kth(k, node)
 for instance) need to have their count to be decreased by 1.
 
 =#
+
+#=
+3-9. [8] A concatenate operation takes two sets S1 and S2, where every key in S1
+is smaller than any key in S2, and merges them together. Give an algorithm to
+concatenate two binary search trees into one binary search tree. The worst-case
+running time should be O(h), where h is the maximal height of the two trees.
+=#
+
+#=
+In other words, this must must have log(N_max) time complexity.... this means we cant extract a sorted list and 
+merge, and re-insert soreted lists.
+
+Let the tree with the strictly smaller indeces be S1. We can then traverse S2 to its minima (log(N) time) and 
+insert the full S1 tree there as the "left" pointer. This results in an unbalanced tree, but the BST property is fullfilled. 
+
+Full rebalancing would incur an O(n) cost.
+
+Option b) 
+
+Get the maximum node of the smaller-keyed set, and detach it. Let it be the head of the a new BST, 
+whose left subtree is the smaller-keyes bst, and its right is the larger-keyed bst. Such is less unbalanced.
+
+#We could similarly get the minimnum node of the larger-keyed BST to serve as separator.
+
+=#
+
+#=
+[5] In the bin-packing problem, we are given n metal objects, each weighing between
+zero and one kilogram. Our goal is to find the smallest number of bins that will
+hold the n objects, with each bin holding one kilogram at most.
+• The best-fit heuristic for bin packing is as follows. Consider the objects in the
+order in which they are given. For each object, place it into the partially filled
+bin with the smallest amount of extra room after the object is inserted.. If
+no such bin exists, start a new bin. Design an algorithm that implements the
+best-fit heuristic (taking as input the n weights w1, w2, ..., wn and outputting
+the number of bins used) in O(n log n) time.
+• Repeat the above using the worst-fit heuristic, where we put the next object in
+the partially filled bin with the largest amount of extra room after the object
+is inserted.
+=#
+
+#=
+This sounds a lot like a heap/BST problem.
+
+Let a BST have nodes that store the currently used space in a bin as their keys, node.key. 
+That is, by default, a node has a key of 0.
+
+When we have a new weight, W, coming in, we want to find (if it exists)
+the node with the the node with maximal key st. its key its smaller-or-equel-than U = 1-W still.
+
+find_node(node, U)
+    if node == nothing
+        return nothing
+    if node.key > U
+        #search the smaller subtree
+        return find_node(node.left, U)
+    else
+        candidate = find_node(node.right, U)
+        if candidate != nothing
+            return candidate
+        else #current node is best so far
+            return node
+
+The above function can be used to find the node st. W + node.key (i.e. the reminaing space after insertion) is minimized. 
+    The above search runs in log(N) time. 
+    In case it return a node, we delete it, and insert a new one with a key of old key + W.
+    In case it does not return a node, we insert a new node of value W.
+    
+Given N nodes, and a balanaced BST, the entire above procedure is bounded by log(N), and thus for N wiegths, by N log(N)
+
+For the worst-fit heuretic, we need to find the key st. W + key is minimized, that is, we need to recourse the other way.
+=#
+
+#=
+[5] Suppose that we are given a sequence of n values x1, x2, ..., xn and seek to
+quickly answer repeated queries of the form: given i and j, find the smallest value
+in xi, . . . , xj.
+(a) Design a data structure that uses O(n2) space and answers queries in O(1)
+time.
+(b) Design a data structure that uses O(n) space and answers queries in O(log n)
+time. For partial credit, your data structure can use O(n log n) space and have
+O(log n) query time.
+=#
+
+#=
+For a), we preocumpte all n^2 possible queries, and map them to a key (xi, xj). Construction of such takes O(n^2) space and time,
+but answers querries in constant time.
+
+b) strongly suggests using a BST/sorted array. 
+TODO: Likely segment tree or smth? Never used them before.
+
+=#
+
+#=
+[5] Suppose you are given an input set S of n numbers, and a black box that if
+given any sequence of real numbers and an integer k instantly and correctly answers
+whether there is a subset of input sequence whose sum is exactly k. Show how to
+use the black box O(n) times to find a subset of S that adds up to k.
+=#
+
+#=
+Clearly, checking all subsets is non-feasible.
+
+Let us sort the input array. We can quickly turn it into an ordered hashset.
+
+For each element, at index i, check if the rest of the set can still add up to k. If yes, delete the current element. 
+If no, retain it (it is needed) 
+
+After the last query, the remaining elements should form a subset which adds up to K.
+
+Proof by contradiction: 
+    Consider that after processing the last element, we still have an extra element at index j, which could be deleted from the current set, 
+    so that the rest (set U) still adds up to K. 
+    This is impossible. When we visited the earlier index j, all the elements in U, hence it would have been deleted.
+    ->Proven.
+=#
