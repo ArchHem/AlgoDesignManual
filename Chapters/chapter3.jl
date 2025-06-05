@@ -287,6 +287,20 @@ but answers querries in constant time.
 b) strongly suggests using a BST/sorted array. 
 TODO: Likely segment tree or smth? Never used them before.
 
+Ok I think for an array of size 2^N: Have a tree, which stores at the node the:
+     minimum value in the node, and stores the minimum in that interval, and the interval borders.
+     Let its left node store the minima in the left subarray; let the right one the minima in the right subarray, etc.
+
+     Then, when we querry: 
+     query(node, i, j)
+     If the range of the current node fully outside of the domain i, j, we return nothing.
+     If the range of the cirrent node equals that of the node, we return its value. 
+     If we have a partial overlap, we recurse as it follows:
+        return min(query(node.left, i, div(i+j, 2)), query(node.right, div(i+j, 2), j)
+    
+        such a search is guaranteed to visits at most 2*log(N) nodes. Since its a BST, for a K = 2^N length array, it has O(K) space needs.
+
+
 =#
 
 #=
@@ -299,8 +313,6 @@ use the black box O(n) times to find a subset of S that adds up to k.
 #=
 Clearly, checking all subsets is non-feasible.
 
-Let us sort the input array. We can quickly turn it into an ordered hashset.
-
 For each element, at index i, check if the rest of the set can still add up to k. If yes, delete the current element. 
 If no, retain it (it is needed) 
 
@@ -309,6 +321,8 @@ After the last query, the remaining elements should form a subset which adds up 
 Proof by contradiction: 
     Consider that after processing the last element, we still have an extra element at index j, which could be deleted from the current set, 
     so that the rest (set U) still adds up to K. 
-    This is impossible. When we visited the earlier index j, all the elements in U, hence it would have been deleted.
+    This is impossible. When we visited the earlier index j, all the elements in U were still present, hence it would have been deleted.
     ->Proven.
+
+    ? Is this really correct? Seems so.
 =#
