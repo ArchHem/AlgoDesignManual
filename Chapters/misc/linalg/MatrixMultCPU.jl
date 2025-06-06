@@ -287,7 +287,7 @@ function tile_aware_swap_big_chunks!(c::Matrix{T}, a::Matrix{T}, b::Matrix{T}, t
 end
 
 #We can also try to tile by k in the outermost loop.
-function tile_aware_swap_big_chunks!(c::Matrix{T}, a::Matrix{T}, b::Matrix{T}, tilesize = 16) where T
+function tile_aware_swap_big_chunks_k_outer!(c::Matrix{T}, a::Matrix{T}, b::Matrix{T}, tilesize = 16) where T
     #=
     actual_tile_size = floor(Int64, cache_bytesize * load_factor / 3)
     elemsize = sizeof(T)
@@ -299,12 +299,12 @@ function tile_aware_swap_big_chunks!(c::Matrix{T}, a::Matrix{T}, b::Matrix{T}, t
     @assert size(c, 2) == size(b, 2)
     @assert size(a, 2) == size(b, 1)
     fill!(c, zero(T))
-    js = axes(b, 2)
-    jchunks = Iterators.partition(js, length(js) ÷ Threads.nthreads())
-    tasks = map(jchunks) do j
+    ks = axes(a, 2)
+    kchunks = Iterators.partition(ks, length(ks) ÷ Threads.nthreads())
+    tasks = map(kchunks) do k
     @spawn begin
-        for i in partition(axes(a, 1), tilesize)
-            for k in partition(axes(a, 2), tilesize)
+        for j in partition(axes(b, 2), tilesize)
+            for i in partition(axes(a, 1), tilesize)
                 @inbounds c_view = @views c[i, j]
                 @inbounds a_view = @views a[i, k]
                 @inbounds b_view = @views b[k, j]
@@ -331,6 +331,7 @@ function relative_tiled_benchmarks_compare_chunks(T = Float64, M_max = 1030, ste
     native_res = zeros(T, length(sizes))
     tile_aware_swap_big_chunks_res = zeros(T, length(sizes))
     tile_aware_swap_res = zeros(T, length(sizes))
+    tile_aware_swap_big_chunks_k_outer_res = zeros(T, length(sizes))
 
     for idx in eachindex(sizes)
         N = sizes[idx]
@@ -347,11 +348,16 @@ function relative_tiled_benchmarks_compare_chunks(T = Float64, M_max = 1030, ste
         c_tile_aware_swap = Matrix{T}(undef, N, N)
         a_tile_aware_swap = randn(rng, T, N, N)
         b_tile_aware_swap = randn(rng, T, N, N)
+
+        c_k_outer = Matrix{T}(undef, N, N)
+        a_k_outer = randn(rng, T, N, N)
+        b_k_outer = randn(rng, T, N, N)
         
         native_res[idx] = @belapsed mul!($c_native, $a_native, $b_native)
         
         tile_aware_swap_big_chunks_res[idx] = @belapsed tile_aware_swap_big_chunks!($c_big_chunks, $a_big_chunks, $b_big_chunks, $tile_size)
         tile_aware_swap_res[idx] = @belapsed tile_aware_swap!($c_tile_aware_swap, $a_tile_aware_swap, $b_tile_aware_swap, $tile_size)
+        tile_aware_swap_big_chunks_k_outer_res[idx] = @belapsed tile_aware_swap_big_chunks_k_outer_fixed!($c_k_outer, $a_k_outer, $b_k_outer, $tile_size)
     end
     y_min_plot = 0.0
     y_max_plot = 0.08
@@ -360,8 +366,9 @@ function relative_tiled_benchmarks_compare_chunks(T = Float64, M_max = 1030, ste
     p = plot(sizes, native_res, label = "Native (BLAS) mul!", color = :black, 
             linewidth = 2, marker = :circle, yticks = y_ticks, ylim = (y_min_plot, y_max_plot),
             grid = :y, gridalpha = 0.7, gridlinewidth = 0.5, gridstyle = :dash)
-    plot!(p, sizes, tile_aware_swap_big_chunks_res, label = "Tiled (kjli) - Big Chunks", color = :blue, marker = :square)
+    plot!(p, sizes, tile_aware_swap_big_chunks_res, label = "Tiled (kjli) - Big Chunks (J-outer parallel)", color = :blue, marker = :square)
     plot!(p, sizes, tile_aware_swap_res, label = "Tiled (kjli) - @threads j-loop", color = :darkgreen, marker = :x)
+    plot!(p, sizes, tile_aware_swap_big_chunks_k_outer_res, label = "Tiled (kjli) - Big Chunks (K-outer parallel, fixed)", color = :red, marker = :diamond)
 
     title!("Tile = $tile_size")
     xlabel!("Matrix Dimension (N)")
