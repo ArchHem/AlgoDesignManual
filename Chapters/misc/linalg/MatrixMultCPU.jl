@@ -200,7 +200,7 @@ function tile_aware_swap!(c::Matrix{T}, a::Matrix{T}, b::Matrix{T}, tilesize = 1
     end
 end
 
-function relative_tiled_benchmarks(T = Float64, M_max = 1030, stepsize = 100)
+function relative_tiled_benchmarks(T = Float64, M_max = 1030, stepsize = 100; tile_size = 16)
     rng = Xoshiro(3)
 
     sizes = 30:stepsize:M_max
@@ -225,28 +225,26 @@ function relative_tiled_benchmarks(T = Float64, M_max = 1030, stepsize = 100)
         c_tile_aware_swap = Matrix{T}(undef, N, N)
         a_tile_aware_swap = randn(rng, T, N, N)
         b_tile_aware_swap = randn(rng, T, N, N)
-
-        c_thread_simd = Matrix{T}(undef, N, N) # Added for thread_simd_matrix_mult!
-        a_thread_simd = randn(rng, T, N, N) # Added for thread_simd_matrix_mult!
-        b_thread_simd = randn(rng, T, N, N) # Added for thread_simd_matrix_mult!
         
         native_res[idx] = @belapsed mul!($c_native, $a_native, $b_native)
         
-        actual_tilesize = min(46, N)
-        tile_aware_res[idx] = @belapsed tile_aware!($c_tile_aware, $a_tile_aware, $b_tile_aware, $actual_tilesize)
-        tile_aware_swap_res[idx] = @belapsed tile_aware_swap!($c_tile_aware_swap, $a_tile_aware_swap, $b_tile_aware_swap, $actual_tilesize)
-        thread_simd_res[idx] = @belapsed thread_simd_matrix_mult!($c_thread_simd, $a_thread_simd, $b_thread_simd) # Added benchmark
+        tile_aware_res[idx] = @belapsed tile_aware!($c_tile_aware, $a_tile_aware, $b_tile_aware, $tile_size)
+        tile_aware_swap_res[idx] = @belapsed tile_aware_swap!($c_tile_aware_swap, $a_tile_aware_swap, $b_tile_aware_swap, $tile_size)
     end
-
-    p = plot(sizes, native_res, label = "Native (BLAS) mul!", color = :black, linewidth = 2, marker = :circle)
+    y_min_plot = 0.0
+    y_max_plot = 0.08
+    grid_interval = 0.005
+    y_ticks = y_min_plot:grid_interval:y_max_plot
+    p = plot(sizes, native_res, label = "Native (BLAS) mul!", color = :black, 
+            linewidth = 2, marker = :circle, yticks = y_ticks, ylim = (y_min_plot, y_max_plot),
+            grid = :y, gridalpha = 0.7, gridlinewidth = 0.5, gridstyle = :dash)
     plot!(p, sizes, tile_aware_res, label = "Tiled (jilk)", color = :green, marker = :cross)
     plot!(p, sizes, tile_aware_swap_res, label = "Tiled (kjli)", color = :darkgreen, marker = :x)
-    plot!(p, sizes, thread_simd_res, label = "Naive, Multithreaded & SIMD", color = :blue, marker = :star) # Added to plot
 
-    title!("Tiled Matrix Multiplication Performance Comparison (Time vs. Matrix Size)")
+    title!("Tile = $tile_size")
     xlabel!("Matrix Dimension (N)")
     ylabel!("Execution Time (seconds)")
     return p
 end
 
-p2 = relative_tiled_benchmarks()
+p2 = relative_tiled_benchmarks(Float64, 1030, 100, tile_size = 32)
