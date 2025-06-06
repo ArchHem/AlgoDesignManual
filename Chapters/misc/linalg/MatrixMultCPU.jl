@@ -302,7 +302,7 @@ function tile_aware_swap_big_chunks_k_outer!(c::Matrix{T}, a::Matrix{T}, b::Matr
     ks = axes(a, 2)
     kchunks = Iterators.partition(ks, length(ks) ÷ Threads.nthreads())
     tasks = map(kchunks) do k
-    @spawn begin
+    for k in 
         for j in partition(axes(b, 2), tilesize)
             for i in partition(axes(a, 1), tilesize)
                 @inbounds c_view = @views c[i, j]
@@ -357,7 +357,7 @@ function relative_tiled_benchmarks_compare_chunks(T = Float64, M_max = 1030, ste
         
         tile_aware_swap_big_chunks_res[idx] = @belapsed tile_aware_swap_big_chunks!($c_big_chunks, $a_big_chunks, $b_big_chunks, $tile_size)
         tile_aware_swap_res[idx] = @belapsed tile_aware_swap!($c_tile_aware_swap, $a_tile_aware_swap, $b_tile_aware_swap, $tile_size)
-        tile_aware_swap_big_chunks_k_outer_res[idx] = @belapsed tile_aware_swap_big_chunks_k_outer_fixed!($c_k_outer, $a_k_outer, $b_k_outer, $tile_size)
+        tile_aware_swap_big_chunks_k_outer_res[idx] = @belapsed tile_aware_swap_big_chunks_k_outer!($c_k_outer, $a_k_outer, $b_k_outer, $tile_size)
     end
     y_min_plot = 0.0
     y_max_plot = 0.08
@@ -368,7 +368,7 @@ function relative_tiled_benchmarks_compare_chunks(T = Float64, M_max = 1030, ste
             grid = :y, gridalpha = 0.7, gridlinewidth = 0.5, gridstyle = :dash)
     plot!(p, sizes, tile_aware_swap_big_chunks_res, label = "Tiled (kjli) - Big Chunks (J-outer parallel)", color = :blue, marker = :square)
     plot!(p, sizes, tile_aware_swap_res, label = "Tiled (kjli) - @threads j-loop", color = :darkgreen, marker = :x)
-    plot!(p, sizes, tile_aware_swap_big_chunks_k_outer_res, label = "Tiled (kjli) - Big Chunks (K-outer parallel, fixed)", color = :red, marker = :diamond)
+    plot!(p, sizes, tile_aware_swap_big_chunks_k_outer_res, label = "Tiled (kjli) - Big Chunks (K-outer parallel)", color = :red, marker = :diamond)
 
     title!("Tile = $tile_size")
     xlabel!("Matrix Dimension (N)")
