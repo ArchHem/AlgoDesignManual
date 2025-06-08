@@ -273,7 +273,7 @@ function tile_aware_swap_big_chunks!(c::Matrix{T}, a::Matrix{T}, b::Matrix{T}, t
                 @inbounds b_view = @views b[k, j]
                 for lk in axes(a_view, 2)
                     for lj in axes(b_view, 2)
-                        @simd for li in axes(a_view, 1)
+                        @simd ivdep for li in axes(a_view, 1)
                             @inbounds c_view[li, lj] = muladd(a_view[li, lk], b_view[lk, lj], c_view[li,lj])
                         end
                     end
@@ -286,42 +286,6 @@ function tile_aware_swap_big_chunks!(c::Matrix{T}, a::Matrix{T}, b::Matrix{T}, t
     return nothing
 end
 
-#We can also try to tile by k in the outermost loop.
-function tile_aware_swap_big_chunks_k_outer!(c::Matrix{T}, a::Matrix{T}, b::Matrix{T}, tilesize = 16) where T
-    #=
-    actual_tile_size = floor(Int64, cache_bytesize * load_factor / 3)
-    elemsize = sizeof(T)
-    #we each matrix tike to have total tile size of actual_tile_size
-
-    tiledim = floor(Int64,sqrt(actual_tile_size / elemsize))
-    =#
-    @assert size(c, 1) == size(a, 1)
-    @assert size(c, 2) == size(b, 2)
-    @assert size(a, 2) == size(b, 1)
-    fill!(c, zero(T))
-    ks = axes(a, 2)
-    kchunks = Iterators.partition(ks, length(ks) ÷ Threads.nthreads())
-    tasks = map(kchunks) do k
-    for k in 
-        for j in partition(axes(b, 2), tilesize)
-            for i in partition(axes(a, 1), tilesize)
-                @inbounds c_view = @views c[i, j]
-                @inbounds a_view = @views a[i, k]
-                @inbounds b_view = @views b[k, j]
-                for lk in axes(a_view, 2)
-                    for lj in axes(b_view, 2)
-                        @simd for li in axes(a_view, 1)
-                            @inbounds c_view[li, lj] = muladd(a_view[li, lk], b_view[lk, lj], c_view[li,lj])
-                        end
-                    end
-                end
-            end
-        end
-    end
-    end
-    fetch.(tasks)
-    return nothing
-end
 
 function relative_tiled_benchmarks_compare_chunks(T = Float64, M_max = 1030, stepsize = 100; tile_size = 32)
     rng = Xoshiro(3)
@@ -331,7 +295,6 @@ function relative_tiled_benchmarks_compare_chunks(T = Float64, M_max = 1030, ste
     native_res = zeros(T, length(sizes))
     tile_aware_swap_big_chunks_res = zeros(T, length(sizes))
     tile_aware_swap_res = zeros(T, length(sizes))
-    tile_aware_swap_big_chunks_k_outer_res = zeros(T, length(sizes))
 
     for idx in eachindex(sizes)
         N = sizes[idx]
@@ -348,16 +311,11 @@ function relative_tiled_benchmarks_compare_chunks(T = Float64, M_max = 1030, ste
         c_tile_aware_swap = Matrix{T}(undef, N, N)
         a_tile_aware_swap = randn(rng, T, N, N)
         b_tile_aware_swap = randn(rng, T, N, N)
-
-        c_k_outer = Matrix{T}(undef, N, N)
-        a_k_outer = randn(rng, T, N, N)
-        b_k_outer = randn(rng, T, N, N)
         
         native_res[idx] = @belapsed mul!($c_native, $a_native, $b_native)
         
         tile_aware_swap_big_chunks_res[idx] = @belapsed tile_aware_swap_big_chunks!($c_big_chunks, $a_big_chunks, $b_big_chunks, $tile_size)
         tile_aware_swap_res[idx] = @belapsed tile_aware_swap!($c_tile_aware_swap, $a_tile_aware_swap, $b_tile_aware_swap, $tile_size)
-        tile_aware_swap_big_chunks_k_outer_res[idx] = @belapsed tile_aware_swap_big_chunks_k_outer!($c_k_outer, $a_k_outer, $b_k_outer, $tile_size)
     end
     y_min_plot = 0.0
     y_max_plot = 0.08
@@ -368,7 +326,6 @@ function relative_tiled_benchmarks_compare_chunks(T = Float64, M_max = 1030, ste
             grid = :y, gridalpha = 0.7, gridlinewidth = 0.5, gridstyle = :dash)
     plot!(p, sizes, tile_aware_swap_big_chunks_res, label = "Tiled (kjli) - Big Chunks (J-outer parallel)", color = :blue, marker = :square)
     plot!(p, sizes, tile_aware_swap_res, label = "Tiled (kjli) - @threads j-loop", color = :darkgreen, marker = :x)
-    plot!(p, sizes, tile_aware_swap_big_chunks_k_outer_res, label = "Tiled (kjli) - Big Chunks (K-outer parallel)", color = :red, marker = :diamond)
 
     title!("Tile = $tile_size")
     xlabel!("Matrix Dimension (N)")
@@ -376,4 +333,54 @@ function relative_tiled_benchmarks_compare_chunks(T = Float64, M_max = 1030, ste
     return p
 end
 
-p3 = relative_tiled_benchmarks_compare_chunks()
+#p3 = relative_tiled_benchmarks_compare_chunks()
+
+
+#It is pretty clear we are hitting the limits of single-level tiling.
+
+#Experience suggests: 
+#For the outer (macro/microtile) loops, the order of k-j-i is ideal
+#The innemost kernel needs to be hand-simd optimized.
+#Parallelization at the highest, continous and data race free loop is prefered. If possible, let
+#Tiling size will likely need to be optimized.
+using SIMD
+function GEMM_prototype!(c::Matrix{T}, a::Matrix{T}, b::Matrix{T}; 
+                        jjsize = 128, iisize = 128, kksize = 128, 
+                        jsize = 32, isize = 32, ksize = 32) where T
+    @assert size(c, 1) == size(a, 1)
+    @assert size(c, 2) == size(b, 2)
+    @assert size(a, 2) == size(b, 1)
+
+    j_macro_chunks = partition(axes(a, 1), jjsize)
+    j_thread_chunks = partition(j_macro_chunks, div(length(j_macro_chunks), nthreads()))
+
+    tasks = map(j_thread_chunks) do j_thread_chunk
+        @spawn begin
+            for k_macro in partition(axes(a, 2), kksize)
+                #parallize across macro j loop
+                for j_macro in j_thread_chunk
+                    for i_macro in partition(axes(b, 1), iisize)
+                        #micro-tile land.
+                        for k_micro in partition(k_macro, ksize)
+                            for j_micro in partition(j_macro, jsize)
+                                for i_micro in partition(i_macro, isize)
+                                    #we are now at the micro-kernel level. indeces map 1-1 to overlaying indeces.
+                                    for k in k_micro
+                                        @simd ivdep for j in j_micro
+                                            for i in i_micro
+                                                @inbounds c[i,j] =  muladd(a[i, k],  b[k, j], c[i,j])
+                                            end
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+    fetch.(tasks)
+    return nothing
+end
+
