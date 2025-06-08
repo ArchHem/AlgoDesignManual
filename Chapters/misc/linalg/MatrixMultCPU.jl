@@ -344,19 +344,22 @@ end
 #Parallelization at the highest, continous and data race free loop is prefered. If possible, let
 #Tiling size will likely need to be optimized.
 using SIMD
+using LoopVectorization
+
 function GEMM_prototype!(c::Matrix{T}, a::Matrix{T}, b::Matrix{T}; 
-                        jjsize = 128, iisize = 128, kksize = 128, 
-                        jsize = 32, isize = 32, ksize = 32) where T
+                        jjsize = 128, iisize = 256, kksize = 256, 
+                        jsize = 16, isize = 32, ksize = 32) where T
     @assert size(c, 1) == size(a, 1)
     @assert size(c, 2) == size(b, 2)
     @assert size(a, 2) == size(b, 1)
 
     j_macro_chunks = partition(axes(a, 1), jjsize)
-    j_thread_chunks = partition(j_macro_chunks, div(length(j_macro_chunks), nthreads()))
+    N = min(length(j_macro_chunks), nthreads())
+    j_thread_chunks = partition(j_macro_chunks, div(length(j_macro_chunks), N))
 
     tasks = map(j_thread_chunks) do j_thread_chunk
         @spawn begin
-            for k_macro in partition(axes(a, 2), kksize)
+            @inbounds for k_macro in partition(axes(a, 2), kksize)
                 #parallize across macro j loop
                 for j_macro in j_thread_chunk
                     for i_macro in partition(axes(b, 1), iisize)
@@ -365,13 +368,18 @@ function GEMM_prototype!(c::Matrix{T}, a::Matrix{T}, b::Matrix{T};
                             for j_micro in partition(j_macro, jsize)
                                 for i_micro in partition(i_macro, isize)
                                     #we are now at the micro-kernel level. indeces map 1-1 to overlaying indeces.
-                                    for k in k_micro
-                                        @simd ivdep for j in j_micro
+
+
+
+                                    @inbounds for k in k_micro
+                                        for j in j_micro
                                             for i in i_micro
                                                 @inbounds c[i,j] =  muladd(a[i, k],  b[k, j], c[i,j])
                                             end
                                         end
                                     end
+
+
                                 end
                             end
                         end
