@@ -346,9 +346,19 @@ end
 using SIMD
 using LoopVectorization
 
+@inline function microkernel!(C, A, B, js, is, ks, laneN)
+    lane = VecRange{laneN}()
+    @inbounds for j in js
+        for i in partition(is
+            for k in ks
+            end
+        end
+    end
+end
+
 function GEMM_prototype!(c::Matrix{T}, a::Matrix{T}, b::Matrix{T}; 
                         jjsize = 128, iisize = 256, kksize = 256, 
-                        jsize = 16, isize = 32, ksize = 32) where T
+                        jsize = 16, isize = 32, ksize = 32, lane_N = 2) where T
     @assert size(c, 1) == size(a, 1)
     @assert size(c, 2) == size(b, 2)
     @assert size(a, 2) == size(b, 1)
