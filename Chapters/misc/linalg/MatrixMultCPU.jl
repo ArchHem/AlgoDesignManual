@@ -355,12 +355,11 @@ C[:, j] = A_:k B_kj
 
 =#
 @inline function microkernel!(C, A, B, js, is, ks, laneN::Int)
-    lane = VecRange{laneN}()
     @inbounds for k in ks
         for j in js
             BJK = B[k, j]
-            for i in first(is):laneN:last(is)
-                @fastmath C[i+lane, j] += A[i+lane, k] * BJK
+            @simd ivdep for i in is
+                @fastmath C[i, j] += A[i, k] * BJK
             end
         end
     end
@@ -388,18 +387,7 @@ function GEMM_prototype!(c::Matrix{T}, a::Matrix{T}, b::Matrix{T};
                             for j_micro in partition(j_macro, jsize)
                                 for i_micro in partition(i_macro, isize)
                                     #we are now at the micro-kernel level. indeces map 1-1 to overlaying indeces.
-
-
-
-                                    @inbounds for k in k_micro
-                                        for j in j_micro
-                                            for i in i_micro
-                                                @inbounds c[i,j] =  muladd(a[i, k],  b[k, j], c[i,j])
-                                            end
-                                        end
-                                    end
-
-
+                                    microkernel!(C, A, B, j_micro, i_micro, k_micro, lane_N)
                                 end
                             end
                         end
