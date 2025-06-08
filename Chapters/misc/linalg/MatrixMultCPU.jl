@@ -346,11 +346,21 @@ end
 using SIMD
 using LoopVectorization
 
-@inline function microkernel!(C, A, B, js, is, ks, laneN)
+
+#=
+
+C[i, j] = sum_k A_ik B_kj
+C[:, j] is continoous in memory
+C[:, j] = A_:k B_kj
+
+=#
+@inline function microkernel!(C, A, B, js, is, ks, laneN::Int)
     lane = VecRange{laneN}()
-    @inbounds for j in js
-        for i in partition(is
-            for k in ks
+    @inbounds for k in ks
+        for j in js
+            BJK = B[k, j]
+            for i in first(is):laneN:last(is)
+                @fastmath C[i+lane, j] += A[i+lane, k] * BJK
             end
         end
     end
