@@ -344,7 +344,7 @@ end
 #Parallelization at the highest, continous and data race free loop is prefered. If possible, let
 #Tiling size will likely need to be optimized.
 using SIMD
-using LoopVectorization
+using Polyester #for semu-reusable threads.
 
 
 #=
@@ -353,41 +353,56 @@ C[i, j] = sum_k A_ik B_kj
 C[:, j] is continoous in memory
 C[:, j] = A_:k B_kj
 
-=#
-@inline function microkernel!(C, A, B, js, is, ks, laneN::Int)
-    @inbounds for k in ks
-        for j in js
-            BJK = B[k, j]
-            @simd ivdep for i in is
-                @fastmath C[i, j] += A[i, k] * BJK
-            end
+I.e. something like:
+
+@inbounds for k in k_micro
+    for j in j_micro
+        BJK = B[k, j]
+        @simd ivdep for i in i_micro
+            @fastmath C[i, j] += A[i, k] * BJK
         end
     end
 end
 
+Of course, hand written kernels are likely to operate better.
+
+=#
+
 function GEMM_prototype!(c::Matrix{T}, a::Matrix{T}, b::Matrix{T}; 
                         jjsize = 128, iisize = 256, kksize = 256, 
-                        jsize = 16, isize = 32, ksize = 32, lane_N = 2) where T
+                        jsize = 16, isize = 32, ksize = 32) where T
     @assert size(c, 1) == size(a, 1)
     @assert size(c, 2) == size(b, 2)
     @assert size(a, 2) == size(b, 1)
 
-    j_macro_chunks = partition(axes(a, 1), jjsize)
+    j_macro_chunks = partition(axes(b, 2), jjsize)
     N = min(length(j_macro_chunks), nthreads())
     j_thread_chunks = partition(j_macro_chunks, div(length(j_macro_chunks), N))
 
     tasks = map(j_thread_chunks) do j_thread_chunk
         @spawn begin
-            @inbounds for k_macro in partition(axes(a, 2), kksize)
+            for k_macro in partition(axes(a, 2), kksize)
                 #parallize across macro j loop
                 for j_macro in j_thread_chunk
-                    for i_macro in partition(axes(b, 1), iisize)
+                    for i_macro in partition(axes(a, 1), iisize)
                         #micro-tile land.
                         for k_micro in partition(k_macro, ksize)
                             for j_micro in partition(j_macro, jsize)
                                 for i_micro in partition(i_macro, isize)
                                     #we are now at the micro-kernel level. indeces map 1-1 to overlaying indeces.
-                                    microkernel!(C, A, B, j_micro, i_micro, k_micro, lane_N)
+
+
+
+                                    for k in k_micro
+                                        for j in j_micro
+                                            BKJ = b[k, j]
+                                            @simd ivdep for i in i_micro
+                                                @inbounds @fastmath c[i,j] += a[i,k] * BKJ
+                                            end
+                                        end
+                                    end
+
+
                                 end
                             end
                         end
@@ -400,3 +415,7 @@ function GEMM_prototype!(c::Matrix{T}, a::Matrix{T}, b::Matrix{T};
     return nothing
 end
 
+N = 1024
+C = zeros(N, N)
+A = randn(N, N)
+B = randn(N, N)
