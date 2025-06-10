@@ -370,7 +370,7 @@ Of course, hand written kernels are likely to operate better.
 
 function GEMM_prototype!(c::Matrix{T}, a::Matrix{T}, b::Matrix{T}; 
                         jjsize = 128, iisize = 256, kksize = 256, 
-                        jsize = 16, isize = 32, ksize = 32) where T
+                        jsize = 4, isize = 32, ksize = 32) where T
     @assert size(c, 1) == size(a, 1)
     @assert size(c, 2) == size(b, 2)
     @assert size(a, 2) == size(b, 1)
