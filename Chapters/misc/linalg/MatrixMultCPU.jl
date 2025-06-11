@@ -368,28 +368,12 @@ Of course, hand written kernels are likely to operate better.
 
 =#
 
-#4x2x2 nanokernel
-@inline function nanokernel!(c, b, a)
-    for k in 1:2
-        for j in 1:2
-            BKJ = b[k, j]
-            @simd ivdep for i in 1:4
-                @inbounds @fastmath c[i,j] += a[i,k] * BKJ
-            end
-        end
-    end
-    return nothing
-
-end
-
 @inline function microkernel!(c, b, a, k_micro, j_micro, i_micro)
-    for k in partition(k_micro,2)
-        for j in partition(j_micro, 2)
-            bl = @views b[k,j]
-            for i in partition(i_micro, 4)
-                cl = @views c[i, j]
-                al = @views a[i, k]
-                nanokernel!(cl, bl, al)
+    @fastmath @inbounds for k in k_micro
+        for j in j_micro
+            BJK = b[k, j]
+            @simd ivdep for i in i_micro
+                c[i, j] += a[i, k] * BJK
             end
         end
     end
