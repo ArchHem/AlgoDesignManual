@@ -345,7 +345,7 @@ end
 #Tiling size will likely need to be optimized.
 using SIMD
 using Polyester #for semu-reusable threads.
-
+using LoopVectorization
 
 #=
 
@@ -398,11 +398,12 @@ function GEMM_prototype!(c::Matrix{T}, a::Matrix{T}, b::Matrix{T};
                 for j_macro in j_thread_chunk
                     for i_macro in partition(axes(a, 1), iisize)
                         #micro-tile land.
+                        
                         for k_micro in partition(k_macro, ksize)
                             for j_micro in partition(j_macro, jsize)
                                 for i_micro in partition(i_macro, isize)
                                     #we are now at the micro-kernel level. indeces map 1-1 to overlaying indeces.
-
+                                    
 
 
                                     microkernel!(c, b, a, k_micro, j_micro, i_micro)
@@ -424,3 +425,39 @@ N = 1024
 C = zeros(N, N)
 A = randn(N, N)
 B = randn(N, N)
+
+#It is clear that we have hit some hard limit here. Further segmentation within the microkerel is required.
+
+struct TileBind{NK, NJ, NI}
+end
+
+#Metaprogramming dark magic...
+@generated function nanokernel!(c, a, b, tile::TileBind{NK, NJ, NI}) where {NK, NJ, NI}
+
+    c_vars = NTuple{NJ*NI, Symbol}(Symbol("c_acc_$(i)_$(j)") for (i,j) in product(1:NI, 1:NJ))
+    
+    load_expr = NTuple{NJ*NI, Expr}(:( @inbounds $(c_vars[lindex]) = c[$(idc[1]), $(idc[2])]) for (lindex, idc) in enumerate(product(1:NI, 1:NJ)))
+
+    store_expr = NTuple{NJ*NI, Expr}(:(@inbounds c[$(idc[1]), $(idc[2])] = $(c_vars[lindex])) for (lindex, idc) in enumerate(product(1:NI, 1:NJ)))
+
+    k_runtime = gensym("k_runtime")
+
+    #a_loads = NTuple{NI, Expr}(:($(Symbol("a_val_$(i)")) = a[$i, $k_runtime]) for i in 1:NI)
+    #change here if its transposed to j-k access order instead.
+    #b_loads = NTuple{NJ, Expr}(:($(Symbol("b_val_$(j)")) = b[$k_runtime, $j]) for j in 1:NJ)
+
+    c_accums = NTuple{NJ*NI, Expr}(:(@fastmath @inbounds $(c_vars[lindex]) += a[$(idc[1]),$k_runtime]*b[$k_runtime, $(idc[2])]) for (lindex, idc) in enumerate(product(1:NI, 1:NJ)) )
+
+    res = quote
+        $(load_expr...)
+
+        for $k_runtime in 1:$NK
+            $(c_accums...)
+        end
+        $(store_expr...)
+        nothing
+    end
+
+    return res
+
+end
