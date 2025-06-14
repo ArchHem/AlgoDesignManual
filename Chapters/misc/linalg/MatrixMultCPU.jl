@@ -442,16 +442,21 @@ end
 
     k_runtime = gensym("k_runtime")
 
-    #a_loads = NTuple{NI, Expr}(:($(Symbol("a_val_$(i)")) = a[$i, $k_runtime]) for i in 1:NI)
-    #change here if its transposed to j-k access order instead.
-    #b_loads = NTuple{NJ, Expr}(:($(Symbol("b_val_$(j)")) = b[$k_runtime, $j]) for j in 1:NJ)
+    a_vars = NTuple{NI, Symbol}(Symbol("a_var_$(i)") for i in 1:NI)
+    b_vars = NTuple{NJ, Symbol}(Symbol("b_var_$(j)") for j in 1:NJ)
 
-    c_accums = NTuple{NJ*NI, Expr}(:(@fastmath @inbounds $(c_vars[lindex]) += a[$(idc[1]),$k_runtime]*b[$k_runtime, $(idc[2])]) for (lindex, idc) in enumerate(product(1:NI, 1:NJ)) )
+    a_loads = NTuple{NI, Expr}(:( @inbounds $(a_vars[i]) = a[$i, $k_runtime]) for i in 1:NI)
+    #change here if its transposed to j-k access order instead.
+    b_loads = NTuple{NJ, Expr}(:( @inbounds $(b_vars[j]) = b[$k_runtime, $j]) for j in 1:NJ)
+
+    c_accums = NTuple{NJ*NI, Expr}(:(@fastmath @inbounds $(c_vars[lindex]) += $(a_vars[idc[1]]) * $(b_vars[idc[2]])) for (lindex, idc) in enumerate(product(1:NI, 1:NJ)) )
 
     res = quote
         $(load_expr...)
 
         for $k_runtime in 1:$NK
+            $(a_loads...)
+            $(b_loads...)
             $(c_accums...)
         end
         $(store_expr...)
