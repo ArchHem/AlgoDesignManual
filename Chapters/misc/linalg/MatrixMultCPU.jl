@@ -461,3 +461,55 @@ end
     return res
 
 end
+
+function GEMM_generated!(c::Matrix{T}, a::Matrix{T}, b::Matrix{T}; 
+                        jjsize = 128, iisize = 256, kksize = 256, 
+                        jsize = 8, isize = 32, ksize = 32, tile::TileBind{NK, NJ, NI} = TileBind{4,4,8}()) where {T, NK, NJ, NI}
+
+    @assert size(c, 1) == size(a, 1)
+    @assert size(c, 2) == size(b, 2)
+    @assert size(a, 2) == size(b, 1)
+
+    #add extra assertations for nanokernel...
+
+    j_macro_chunks = partition(axes(b, 2), jjsize)
+    N = min(length(j_macro_chunks), nthreads())
+    j_thread_chunks = partition(j_macro_chunks, div(length(j_macro_chunks), N))
+
+    tasks = map(j_thread_chunks) do j_thread_chunk
+        @spawn begin
+            for k_macro in partition(axes(a, 2), kksize)
+                #parallize across macro j loop
+                for j_macro in j_thread_chunk
+                    for i_macro in partition(axes(a, 1), iisize)
+                        #micro-tile land.
+                        
+                        for k_micro in partition(k_macro, ksize)
+                            for j_micro in partition(j_macro, jsize)
+                                for i_micro in partition(i_macro, isize)
+                                    #we are now at the micro-kernel level. indeces map 1-1 to overlaying indeces.
+                                    
+
+                                    for k_n in partition(k_micro, NK)
+                                        for j_n in partition(j_micro, NJ)
+                                            b_l = @inbounds @views b[k_n, j_n]
+                                            for i_n in partition(i_micro, NI)
+                                                a_l = @inbounds @views a[i_n, k_n]
+                                                c_l = @inbounds @views c[i_n, j_n]
+                                                nanokernel!(c_l, a_l, b_l, tile)
+                                            end
+                                        end
+                                    end
+
+
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+    fetch.(tasks)
+    return nothing
+end
