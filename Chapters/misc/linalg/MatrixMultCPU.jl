@@ -515,6 +515,6 @@ function GEMM_generated!(c::Matrix{T}, a::Matrix{T}, b::Matrix{T};
             end
         end
     end
-    fetch.(tasks)
+    fetch.(tasks)::Vector{Nothing}
     return nothing
 end
