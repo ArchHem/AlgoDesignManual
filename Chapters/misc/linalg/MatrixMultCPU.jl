@@ -467,6 +467,12 @@ end
 
 end
 
+#We have 32x128 bit simd registers. i.e. each can hold 1x full fp
+#NI x NJ / 2 = 16 are required to hold C.
+#NI / 2 = 4 are required to hold elements of a
+#NJ / 2 = 2 are required to hold elements of b
+
+#This in total will use 22 registers out of 32. This is not ideal! However, generating leftore blocks, for now, is overkill.
 function GEMM_generated!(c::Matrix{T}, a::Matrix{T}, b::Matrix{T}; 
                         jjsize = 128, iisize = 256, kksize = 256, 
                         jsize = 4, isize = 64, ksize = 32, tile::TileBind{NK, NJ, NI} = TileBind{8,4,8}()) where {T, NK, NJ, NI}
@@ -494,7 +500,7 @@ function GEMM_generated!(c::Matrix{T}, a::Matrix{T}, b::Matrix{T};
                                 for i_micro in partition(i_macro, isize)
                                     #we are now at the micro-kernel level. indeces map 1-1 to overlaying indeces.
                                     
-
+                                    #try to generate a second nanokernel for better blockinsg....
                                     for k_n in partition(k_micro, NK)
                                         for j_n in partition(j_micro, NJ)
                                             b_l = @inbounds @views b[k_n, j_n]
