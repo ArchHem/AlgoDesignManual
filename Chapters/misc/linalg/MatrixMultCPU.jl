@@ -469,7 +469,7 @@ end
 
 function GEMM_generated!(c::Matrix{T}, a::Matrix{T}, b::Matrix{T}; 
                         jjsize = 128, iisize = 256, kksize = 256, 
-                        jsize = 4, isize = 64, ksize = 32, tile::TileBind{NK, NJ, NI} = TileBind{4,4,8}()) where {T, NK, NJ, NI}
+                        jsize = 4, isize = 64, ksize = 32, tile::TileBind{NK, NJ, NI} = TileBind{8,4,8}()) where {T, NK, NJ, NI}
 
     @assert size(c, 1) == size(a, 1)
     @assert size(c, 2) == size(b, 2)
@@ -519,4 +519,52 @@ function GEMM_generated!(c::Matrix{T}, a::Matrix{T}, b::Matrix{T};
     return nothing
 end
 
+#Even more reclyced benchmarking plot code...
+function compare_gemm_implementations(T = Float64; 
+                                       sizes = [128, 256, 384, 512, 640, 768, 896, 1024],
+                                       gemm_generated_tile_params = TileBind{4,4,8}())
+    rng = Xoshiro(3)
+    mul_res = zeros(T, length(sizes))
+    gemm_generated_res = zeros(T, length(sizes))
+    gemm_prototype_res = zeros(T, length(sizes))
+    max_N = maximum(sizes)
+    c_mul = Matrix{T}(undef, max_N, max_N)
+    a_mul = randn(rng, T, max_N, max_N)
+    b_mul = randn(rng, T, max_N, max_N)
+    c_gen = Matrix{T}(undef, max_N, max_N)
+    a_gen = randn(rng, T, max_N, max_N)
+    b_gen = randn(rng, T, max_N, max_N)
+    c_proto = Matrix{T}(undef, max_N, max_N)
+    a_proto = randn(rng, T, max_N, max_N)
+    b_proto = randn(rng, T, max_N, max_N)
+
+    for idx in eachindex(sizes)
+        N = sizes[idx]
+        println("Benchmarking N = $(N) x $(N) matrices")
+        
+        
+        fill!(c_mul, 0)
+        mul_res[idx] = @belapsed mul!($c_mul, $a_mul, $b_mul) seconds=3
+
+        fill!(c_gen, 0)
+        gemm_generated_res[idx] = @belapsed GEMM_generated!($c_gen, $a_gen, $b_gen; tile=$gemm_generated_tile_params) seconds=3
+
+        fill!(c_proto, 0)
+        gemm_prototype_res[idx] = @belapsed GEMM_prototype!($c_proto, $a_proto, $b_proto) seconds=3
+    end
+
+    p = plot(sizes, mul_res, label = "Native (BLAS) mul!", color = :black, 
+            linewidth = 2, marker = :circle, markersize = 4)
+    plot!(p, sizes, gemm_generated_res, label = "Custom GEMM_generated!", color = :red, 
+            linewidth = 2, marker = :square, markersize = 4)
+    plot!(p, sizes, gemm_prototype_res, label = "Custom GEMM_prototype!", color = :blue, 
+            linewidth = 2, marker = :utriangle, markersize = 4)
+
+    title!("GEMM Implementation Comparison")
+    xlabel!("Matrix Dimension (N)")
+    ylabel!("Execution Time (seconds)")
+    plot!(p)
+    
+    return p
+end
 
