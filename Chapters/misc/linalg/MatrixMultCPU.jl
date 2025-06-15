@@ -469,7 +469,7 @@ end
 
 function GEMM_generated!(c::Matrix{T}, a::Matrix{T}, b::Matrix{T}; 
                         jjsize = 128, iisize = 256, kksize = 256, 
-                        jsize = 8, isize = 32, ksize = 32, tile::TileBind{NK, NJ, NI} = TileBind{4,4,8}()) where {T, NK, NJ, NI}
+                        jsize = 4, isize = 64, ksize = 32, tile::TileBind{NK, NJ, NI} = TileBind{4,4,8}()) where {T, NK, NJ, NI}
 
     @assert size(c, 1) == size(a, 1)
     @assert size(c, 2) == size(b, 2)
@@ -518,3 +518,5 @@ function GEMM_generated!(c::Matrix{T}, a::Matrix{T}, b::Matrix{T};
     fetch.(tasks)::Vector{Nothing}
     return nothing
 end
+
+
